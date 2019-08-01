@@ -66,20 +66,20 @@ pub fn parse_exif_entry(f: &IfdEntry) -> ExifEntry
 }
 
 /// Superficial parse of IFD that can't fail
-pub fn parse_ifd(subifd: bool, le: bool, count: u16, contents: &[u8]) -> (Vec<IfdEntry>, usize)
+pub fn parse_ifd(subifd: bool, le: bool, count: u16, contents: &[u8]) -> Option<(Vec<IfdEntry>, usize)>
 {
 	let mut entries: Vec<IfdEntry> = Vec::new();
 
 	for i in 0..count {
 		// println!("Parsing IFD entry {}", i);
 		let mut offset = (i as usize) * 12;
-		let tag = read_u16(le, &contents[offset..offset + 2]);
+		let tag = read_u16(le, &contents.get(offset..offset + 2)?);
 		offset += 2;
-		let format = read_u16(le, &contents[offset..offset + 2]);
+		let format = read_u16(le, &contents.get(offset..offset + 2)?);
 		offset += 2;
-		let count = read_u32(le, &contents[offset..offset + 4]);
+		let count = read_u32(le, &contents.get(offset..offset + 4)?);
 		offset += 4;
-		let data = &contents[offset..offset + 4];
+		let data = &contents.get(offset..offset + 4)?;
 		let data = data.to_vec();
 
 		let entry = IfdEntry{namespace: Namespace::Standard,
@@ -91,7 +91,7 @@ pub fn parse_ifd(subifd: bool, le: bool, count: u16, contents: &[u8]) -> (Vec<If
 
 	let next_ifd = if subifd {0} else {read_u32(le, &contents[count as usize * 12..]) as usize};
 
-	return (entries, next_ifd);
+	Some((entries, next_ifd))
 }
 
 /// Deep parse of IFD that grabs EXIF data from IFD0, SubIFD and GPS IFD
@@ -105,7 +105,7 @@ fn parse_exif_ifd(le: bool, contents: &[u8], ioffset: usize,
 		return Err(ExifError::ExifIfdTruncated("Truncated at dir entry count".to_string()))
 	}
 
-	let count = read_u16(le, &contents[offset..offset + 2]);
+	let count = read_u16(le, &contents.get(offset..offset + 2).ok_or(ExifError::IfdTruncated)?);
 	// println!("IFD entry count is {}", count);
 	let ifd_length = (count as usize) * 12;
 	offset += 2;
@@ -114,7 +114,8 @@ fn parse_exif_ifd(le: bool, contents: &[u8], ioffset: usize,
 		return Err(ExifError::ExifIfdTruncated("Truncated at dir listing".to_string()));
 	}
 
-	let (mut ifd, _) = parse_ifd(true, le, count, &contents[offset..offset + ifd_length]);
+	let ifd_content = &contents.get(offset..offset + ifd_length).ok_or(ExifError::IfdTruncated)?;
+	let (mut ifd, _) = parse_ifd(true, le, count, ifd_content).ok_or(ExifError::IfdTruncated)?;
 
 	for entry in &mut ifd {
 		if ! entry.copy_data(contents) {
@@ -144,11 +145,12 @@ pub fn parse_ifds(le: bool, ifd0_offset: usize, contents: &[u8]) -> ExifEntryRes
 	// at this point we knot that IFD0 is good
 	// looks for SubIFD (EXIF)
 
-	let count = read_u16(le, &contents[offset..offset + 2]);
+	let count = read_u16(le, &contents.get(offset..offset + 2).ok_or(ExifError::IfdTruncated)?);
 	let ifd_length = (count as usize) * 12 + 4;
 	offset += 2;
 
-	let (ifd, _) = parse_ifd(false, le, count, &contents[offset..offset + ifd_length]);
+	let ifd_content = &contents.get(offset..offset + ifd_length).ok_or(ExifError::IfdTruncated)?;
+	let (ifd, _) = parse_ifd(false, le, count, ifd_content).ok_or(ExifError::IfdTruncated)?;
 
 	for entry in &ifd {
 		if entry.tag != (((ExifTag::ExifOffset as u32) & 0xffff) as u16) &&
