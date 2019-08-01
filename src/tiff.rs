@@ -2,7 +2,6 @@ use super::types::*;
 use super::types_impl::*;
 use super::lowlevel::*;
 use super::ifdformat::*;
-use super::debug::*;
 use super::exif::*;
 use super::exifpost::*;
 
@@ -44,17 +43,17 @@ pub fn parse_exif_entry(f: &IfdEntry) -> ExifEntry
 	}
 
 	if format != f.format {
-		warning(&format!("EXIF tag {:x} {} ({}), expected format {} ({:?}), found {} ({:?})",
-			f.tag, f.tag, tag, format as u8, format, f.format as u8, f.format));
+		eprintln!("EXIF tag {:x} {} ({}), expected format {} ({:?}), found {} ({:?})",
+			f.tag, f.tag, tag, format as u8, format, f.format as u8, f.format);
 		return e;
 	}
 
 	if min_count != -1 &&
 			((f.count as i32) < min_count ||
 			(f.count as i32) > max_count) {
-		warning(&format!("EXIF tag {:x} {} ({:?}), format {}, expected count {}..{} found {}",
+		eprintln!("EXIF tag {:x} {} ({:?}), format {}, expected count {}..{} found {}",
 			f.tag, f.tag, tag, format as u8, min_count,
-			max_count, f.count));
+			max_count, f.count);
 		return e;
 	}
 
@@ -71,7 +70,6 @@ pub fn parse_ifd(subifd: bool, le: bool, count: u16, contents: &[u8]) -> Option<
 	let mut entries: Vec<IfdEntry> = Vec::new();
 
 	for i in 0..count {
-		// println!("Parsing IFD entry {}", i);
 		let mut offset = (i as usize) * 12;
 		let tag = read_u16(le, &contents.get(offset..offset + 2)?);
 		offset += 2;
@@ -100,13 +98,11 @@ fn parse_exif_ifd(le: bool, contents: &[u8], ioffset: usize,
 {
 	let mut offset = ioffset;
 
-	// println!("Offset is {}", offset);
 	if contents.len() < (offset + 2) {
 		return Err(ExifError::ExifIfdTruncated("Truncated at dir entry count".to_string()))
 	}
 
 	let count = read_u16(le, &contents.get(offset..offset + 2).ok_or(ExifError::IfdTruncated)?);
-	// println!("IFD entry count is {}", count);
 	let ifd_length = (count as usize) * 12;
 	offset += 2;
 
