@@ -1,14 +1,14 @@
 [package]
 name = "rexif"
-version = "0.3.6"
-authors = ["Elvis Pfützenreuter <epxx@epxx.co>"]
-include = ["**/*.rs", "Cargo.toml", "README.md"]
+version = "0.3.7"
+authors = ["Elvis Pfützenreuter <epxx@epxx.co>", "Kornel <kornel@geekhood.net>"]
+include = ["src/*.rs", "Cargo.toml", "README.md", "LICENSE"]
 description = "RExif is a native Rust crate, written to extract EXIF data from JPEG and TIFF images."
 license = "MIT"
 categories = ["multimedia::images", "parser-implementations"]
-documentation = "https://elvis-epx.github.io/doc/rexif/"
+documentation = "https://docs.rs/rexif"
 homepage = "https://lib.rs/crates/rexif"
-keywords = ["exif", "jpeg", "tiff", "tag", "gps"]
+keywords = ["exif", "metadata", "tiff", "tag", "gps"]
 readme = "README.md"
 repository = "https://github.com/kornelski/rexif.git"
 edition = "2018"
