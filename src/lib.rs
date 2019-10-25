@@ -60,22 +60,22 @@ mod exif;
 pub fn parse_buffer(contents: &[u8]) -> ExifResult
 {
 	let mime = detect_type(contents);
-
-	let d = match mime {
+	let mut warnings = vec![];
+	let res = match mime {
 		"" => return Err(ExifError::FileTypeUnknown),
 		"image/jpeg" => {
 			let (offset, size) = find_embedded_tiff_in_jpeg(contents)?;
-			// println!("Offset {} size {}", offset, size);
-			parse_tiff(&contents[offset .. offset + size])?
+			parse_tiff(&contents[offset .. offset + size], &mut warnings)
 		},
 		_ => {
-			parse_tiff(contents)?
+			parse_tiff(contents, &mut warnings)
 		}
 	};
+	warnings.into_iter().for_each(|w| eprintln!("{}", w));
 
 	Ok(ExifData {
 		mime: mime.to_string(),
-		entries: d,
+		entries: res?,
 	})
 }
 

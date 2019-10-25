@@ -10,7 +10,7 @@ type InExifResult = Result<(), ExifError>;
 /// Parse of raw IFD entry into EXIF data, if it is of a known type, and returns
 /// an ExifEntry object. If the tag is unknown, the enumeration is set to UnknownToMe,
 /// but the raw information of tag is still available in the ifd member.
-pub fn parse_exif_entry(f: &IfdEntry) -> ExifEntry
+pub fn parse_exif_entry(f: &IfdEntry, warnings: &mut Vec<String>) -> ExifEntry
 {
 	let value = tag_value_new(f);
 
@@ -43,17 +43,17 @@ pub fn parse_exif_entry(f: &IfdEntry) -> ExifEntry
 	}
 
 	if format != f.format {
-		eprintln!("EXIF tag {:x} {} ({}), expected format {} ({:?}), found {} ({:?})",
-			f.tag, f.tag, tag, format as u8, format, f.format as u8, f.format);
+		warnings.push(format!("EXIF tag {:x} {} ({}), expected format {} ({:?}), found {} ({:?})",
+			f.tag, f.tag, tag, format as u8, format, f.format as u8, f.format));
 		return e;
 	}
 
 	if min_count != -1 &&
 			((f.count as i32) < min_count ||
 			(f.count as i32) > max_count) {
-		eprintln!("EXIF tag {:x} {} ({:?}), format {}, expected count {}..{} found {}",
+		warnings.push(format!("EXIF tag {:x} {} ({:?}), format {}, expected count {}..{} found {}",
 			f.tag, f.tag, tag, format as u8, min_count,
-			max_count, f.count);
+			max_count, f.count));
 		return e;
 	}
 
@@ -94,7 +94,7 @@ pub fn parse_ifd(subifd: bool, le: bool, count: u16, contents: &[u8]) -> Option<
 
 /// Deep parse of IFD that grabs EXIF data from IFD0, SubIFD and GPS IFD
 fn parse_exif_ifd(le: bool, contents: &[u8], ioffset: usize,
-				exif_entries: &mut Vec<ExifEntry>) -> InExifResult
+				exif_entries: &mut Vec<ExifEntry>, warnings: &mut Vec<String>) -> InExifResult
 {
 	let mut offset = ioffset;
 
@@ -118,7 +118,7 @@ fn parse_exif_ifd(le: bool, contents: &[u8], ioffset: usize,
 			// data is probably beyond EOF
 			continue;
 		}
-		let exif_entry = parse_exif_entry(entry);
+		let exif_entry = parse_exif_entry(entry, warnings);
 		exif_entries.push(exif_entry);
 	}
 
@@ -126,14 +126,13 @@ fn parse_exif_ifd(le: bool, contents: &[u8], ioffset: usize,
 }
 
 /// Parses IFD0 and looks for SubIFD or GPS IFD within IFD0
-pub fn parse_ifds(le: bool, ifd0_offset: usize, contents: &[u8]) -> ExifEntryResult
-{
+pub fn parse_ifds(le: bool, ifd0_offset: usize, contents: &[u8], warnings: &mut Vec<String>) -> ExifEntryResult {
 	let mut offset = ifd0_offset;
 	let mut exif_entries: Vec<ExifEntry> = Vec::new();
 
 	// fills exif_entries with data from IFD0
 
-	match parse_exif_ifd(le, contents, offset, &mut exif_entries) {
+	match parse_exif_ifd(le, contents, offset, &mut exif_entries, warnings) {
 		Ok(_) => true,
 		Err(e) => return Err(e),
 	};
@@ -160,7 +159,7 @@ pub fn parse_ifds(le: bool, ifd0_offset: usize, contents: &[u8]) -> ExifEntryRes
 			return Err(ExifError::ExifIfdTruncated("Exif SubIFD goes past EOF".to_string()));
 		}
 
-		match parse_exif_ifd(le, contents, exif_offset, &mut exif_entries) {
+		match parse_exif_ifd(le, contents, exif_offset, &mut exif_entries, warnings) {
 			Ok(_) => true,
 			Err(e) => return Err(e),
 		};
@@ -178,8 +177,7 @@ pub fn parse_ifds(le: bool, ifd0_offset: usize, contents: &[u8]) -> ExifEntryRes
 }
 
 /// Parse a TIFF image, or embedded TIFF in JPEG, in order to get IFDs and then the EXIF data
-pub fn parse_tiff(contents: &[u8]) -> ExifEntryResult
-{
+pub fn parse_tiff(contents: &[u8], warnings: &mut Vec<String>) -> ExifEntryResult {
 	let mut le = false;
 
 	if contents.len() < 8 {
@@ -201,5 +199,5 @@ pub fn parse_tiff(contents: &[u8]) -> ExifEntryResult
 
 	let offset = read_u32(le, &contents[4..8]) as usize;
 
-	return parse_ifds(le, offset, &contents);
+	return parse_ifds(le, offset, &contents, warnings);
 }
