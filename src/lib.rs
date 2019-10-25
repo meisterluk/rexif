@@ -57,26 +57,38 @@ mod exif;
 
 /// Parse a byte buffer that should contain a TIFF or JPEG image.
 /// Tries to detect format and parse EXIF data.
-pub fn parse_buffer(contents: &[u8]) -> ExifResult
-{
+///
+/// Prints warnings to stderr.
+pub fn parse_buffer(contents: &[u8]) -> ExifResult {
+	let (res, warnings) = parse_buffer_quiet(contents);
+	warnings.into_iter().for_each(|w| eprintln!("{}", w));
+	res
+}
+
+/// Parse a byte buffer that should contain a TIFF or JPEG image.
+/// Tries to detect format and parse EXIF data.
+///
+/// Returns warnings alongside result.
+pub fn parse_buffer_quiet(contents: &[u8]) -> (ExifResult, Vec<String>) {
 	let mime = detect_type(contents);
 	let mut warnings = vec![];
 	let (res, mime) = match mime {
-		FileType::Unknown => return Err(ExifError::FileTypeUnknown),
-		FileType::JPEG => {
-			let (offset, size) = find_embedded_tiff_in_jpeg(contents)?;
-			(parse_tiff(&contents[offset .. offset + size], &mut warnings), "image/jpeg")
-		},
+		FileType::Unknown => return (Err(ExifError::FileTypeUnknown), warnings),
 		FileType::TIFF => {
 			(parse_tiff(contents, &mut warnings), "image/tiff")
-		}
+		},
+		FileType::JPEG => {
+			(find_embedded_tiff_in_jpeg(contents)
+			.and_then(|(offset, size)| {
+				parse_tiff(&contents[offset .. offset + size], &mut warnings)
+			}), "image/jpeg")
+		},
 	};
-	warnings.into_iter().for_each(|w| eprintln!("{}", w));
 
-	Ok(ExifData {
+	(res.map(|entries| ExifData {
 		mime: mime.to_string(),
-		entries: res?,
-	})
+		entries,
+	}), warnings)
 }
 
 /// Try to read and parse an open file that is expected to contain an image
