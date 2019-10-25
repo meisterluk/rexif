@@ -1,4 +1,4 @@
-use types::ExifError;
+use crate::types::ExifError;
 
 pub enum FileType {
 	Unknown,

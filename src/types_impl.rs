@@ -110,7 +110,7 @@ impl Error for ExifError {
 }
 
 impl Display for ExifError {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match *self {
 			ExifError::IoError(ref e) => e.fmt(f),
 			ExifError::FileTypeUnknown => write!(f, "File type unknown"),
@@ -131,7 +131,7 @@ impl From<io::Error> for ExifError {
 }
 
 impl fmt::Display for TagValue {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match *self {
 			TagValue::Ascii(ref s) => write!(f, "{}", s),
 			TagValue::U16(ref a) => write!(f, "{}", numarray_to_string(a)),

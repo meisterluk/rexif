@@ -1,6 +1,5 @@
 use std::env;
 use std::process;
-extern crate rexif;
 
 use rexif::ExifTag;
 

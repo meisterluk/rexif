@@ -11,6 +11,7 @@ homepage = "https://lib.rs/crates/rexif"
 keywords = ["exif", "jpeg", "tiff", "tag", "gps"]
 readme = "README.md"
 repository = "https://github.com/kornelski/rexif.git"
+edition = "2018"
 
 [lib]
 name = "rexif"

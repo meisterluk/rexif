@@ -16,7 +16,7 @@ impl IRational {
 }
 
 impl Display for IRational {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		write!(f, "{}/{}", self.numerator, self.denominator)
 	}
 }
@@ -36,7 +36,7 @@ impl URational {
 }
 
 impl Display for URational {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		write!(f, "{}/{}", self.numerator, self.denominator)
 	}
 }
