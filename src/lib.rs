@@ -61,14 +61,14 @@ pub fn parse_buffer(contents: &[u8]) -> ExifResult
 {
 	let mime = detect_type(contents);
 	let mut warnings = vec![];
-	let res = match mime {
-		"" => return Err(ExifError::FileTypeUnknown),
-		"image/jpeg" => {
+	let (res, mime) = match mime {
+		FileType::Unknown => return Err(ExifError::FileTypeUnknown),
+		FileType::JPEG => {
 			let (offset, size) = find_embedded_tiff_in_jpeg(contents)?;
-			parse_tiff(&contents[offset .. offset + size], &mut warnings)
+			(parse_tiff(&contents[offset .. offset + size], &mut warnings), "image/jpeg")
 		},
-		_ => {
-			parse_tiff(contents, &mut warnings)
+		FileType::TIFF => {
+			(parse_tiff(contents, &mut warnings), "image/tiff")
 		}
 	};
 	warnings.into_iter().for_each(|w| eprintln!("{}", w));
