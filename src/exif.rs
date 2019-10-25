@@ -1,5 +1,5 @@
-use super::types::*;
 use super::exifreadable::*;
+use super::types::*;
 
 /// Convert a numeric tag into ExifTag enumeration, and yields information about the tag. This information
 /// is used by the main body of the parser to sanity-check the tags found in image

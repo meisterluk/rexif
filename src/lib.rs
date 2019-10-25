@@ -36,7 +36,7 @@
 //! ```
 
 use std::fs::File;
-use std::io::{Seek,SeekFrom,Read};
+use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 
 mod lowlevel;
@@ -51,18 +51,18 @@ use self::image::*;
 mod ifdformat;
 mod tiff;
 use self::tiff::*;
-mod exifreadable;
-mod exifpost;
 mod exif;
+mod exifpost;
+mod exifreadable;
 
 /// Parse a byte buffer that should contain a TIFF or JPEG image.
 /// Tries to detect format and parse EXIF data.
 ///
 /// Prints warnings to stderr.
 pub fn parse_buffer(contents: &[u8]) -> ExifResult {
-	let (res, warnings) = parse_buffer_quiet(contents);
-	warnings.into_iter().for_each(|w| eprintln!("{}", w));
-	res
+    let (res, warnings) = parse_buffer_quiet(contents);
+    warnings.into_iter().for_each(|w| eprintln!("{}", w));
+    res
 }
 
 /// Parse a byte buffer that should contain a TIFF or JPEG image.
@@ -70,42 +70,41 @@ pub fn parse_buffer(contents: &[u8]) -> ExifResult {
 ///
 /// Returns warnings alongside result.
 pub fn parse_buffer_quiet(contents: &[u8]) -> (ExifResult, Vec<String>) {
-	let mime = detect_type(contents);
-	let mut warnings = vec![];
-	let (res, mime) = match mime {
-		FileType::Unknown => return (Err(ExifError::FileTypeUnknown), warnings),
-		FileType::TIFF => {
-			(parse_tiff(contents, &mut warnings), "image/tiff")
-		},
-		FileType::JPEG => {
-			(find_embedded_tiff_in_jpeg(contents)
-			.and_then(|(offset, size)| {
-				parse_tiff(&contents[offset .. offset + size], &mut warnings)
-			}), "image/jpeg")
-		},
-	};
+    let mime = detect_type(contents);
+    let mut warnings = vec![];
+    let (res, mime) = match mime {
+        FileType::Unknown => return (Err(ExifError::FileTypeUnknown), warnings),
+        FileType::TIFF => (parse_tiff(contents, &mut warnings), "image/tiff"),
+        FileType::JPEG => (
+            find_embedded_tiff_in_jpeg(contents).and_then(|(offset, size)| {
+                parse_tiff(&contents[offset..offset + size], &mut warnings)
+            }),
+            "image/jpeg",
+        ),
+    };
 
-	(res.map(|entries| ExifData {
-		mime: mime.to_string(),
-		entries,
-	}), warnings)
+    (
+        res.map(|entries| ExifData {
+            mime: mime.to_string(),
+            entries,
+        }),
+        warnings,
+    )
 }
 
 /// Try to read and parse an open file that is expected to contain an image
-pub fn read_file(f: &mut File) -> ExifResult
-{
-	f.seek(SeekFrom::Start(0))?;
+pub fn read_file(f: &mut File) -> ExifResult {
+    f.seek(SeekFrom::Start(0))?;
 
-	// TODO: should read only the relevant parts of a file,
-	// and pass a StringIO-like object instead of a Vec buffer
+    // TODO: should read only the relevant parts of a file,
+    // and pass a StringIO-like object instead of a Vec buffer
 
-	let mut contents: Vec<u8> = Vec::new();
-	f.read_to_end(&mut contents)?;
-	parse_buffer(&contents)
+    let mut contents: Vec<u8> = Vec::new();
+    f.read_to_end(&mut contents)?;
+    parse_buffer(&contents)
 }
 
 /// Opens an image (passed as a file name), tries to read and parse it.
-pub fn parse_file<P: AsRef<Path>>(fname: P) -> ExifResult
-{
-	read_file(&mut File::open(fname)?)
+pub fn parse_file<P: AsRef<Path>>(fname: P) -> ExifResult {
+    read_file(&mut File::open(fname)?)
 }
