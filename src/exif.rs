@@ -4,6 +4,8 @@ use super::types::*;
 /// Convert a numeric tag into ExifTag enumeration, and yields information about the tag. This information
 /// is used by the main body of the parser to sanity-check the tags found in image
 /// and make sure that EXIF tags have the right data types
+///
+/// Returns (tag, unit, format, min_count, max_count, more_readable)
 pub fn tag_to_exif(f: u16) -> (ExifTag, &'static str, IfdFormat, i32, i32, fn(&TagValue) -> String)
 {
         match f {

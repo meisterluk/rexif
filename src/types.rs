@@ -12,6 +12,91 @@ pub struct ExifData {
     pub entries: Vec<ExifEntry>,
 }
 
+const EXIF_HEADER: &[u8] = &[0x45, 0x78, 0x69, 0x66, 0x00, 0x00];
+
+impl ExifData {
+    pub fn serialize(&self, align: ByteAlign) -> Vec<u8> {
+        if let ByteAlign::Intel = align {
+            unimplemented!("Intel byte align");
+        }
+        let mut serialized = vec![];
+
+        // Generate the Exif header
+        //serialized.extend(EXIF_HEADER);
+
+        // The offset of the TIFF header. This is used to calculate offsets relative to the start
+        // of the TIFF header.
+        //let tiff_header_start = serialized.len();
+
+        let tiff_header = &[0x4d, 0x4d, 0x00, 0x2a];
+        // Generate the TIFF header (for now, always use Motorola byte order)
+        serialized.extend(tiff_header);
+
+        // The offset to IFD-0. IFD-0 follows immediately after the TIFF header.
+        // The offset is a 4-byte value - serialize it to bytes:
+        let offset = (tiff_header.len() as u32 + std::mem::size_of::<u32>() as u32).to_be_bytes();
+        serialized.extend(&offset);
+
+        // Serialize the number of directory entries in this IFD
+        serialized.extend(&(self.entries.len() as u16).to_be_bytes());
+
+        let mut patchpoints = vec![];
+
+        for entry in &self.entries {
+            // Serialize the entry
+            let ifd_data = &entry.ifd;
+            assert!(ifd_data.namespace == Namespace::Standard, "Found non-standard namespace");
+
+            // Serialize the tag (2 bytes)
+            serialized.extend(&ifd_data.tag.to_be_bytes());
+
+            // Serialize the data format (2 bytes)
+            serialized.extend(&(ifd_data.format as u16).to_be_bytes());
+
+            // Serialize the number of components (4 bytes)
+            serialized.extend(&ifd_data.count.to_be_bytes());
+
+            // Serialize the data value/offset to data value (4 bytes)
+            if ifd_data.data.len() <= 4 {
+                serialized.extend(&ifd_data.data);
+            } else {
+                patchpoints.push(Patchpoint::new(serialized.len() as u32, &ifd_data.data));
+                // to be filled out later
+                serialized.extend(&[0, 0, 0, 0]);
+            }
+        }
+
+        serialized.extend(&[0, 0, 0, 0]);
+
+        for patch in patchpoints {
+            // The position of the data pointed to by the IFD entries serialized above.
+            let bytes = (serialized.len() as u32).to_be_bytes();
+            serialized.extend(&patch.data);
+            let off = patch.offset_pos as usize;
+            for i in 0..4 {
+                serialized[off + i] = bytes[i];
+            }
+        }
+
+        serialized
+    }
+}
+
+struct Patchpoint {
+    // The position where to write the offset in the file where the data will be located
+    offset_pos: u32,
+    data: Vec<u8>,
+}
+
+impl Patchpoint {
+    pub fn new(offset_pos: u32, data: &[u8]) -> Patchpoint {
+        Patchpoint {
+            offset_pos,
+            data: data.to_vec(),
+        }
+    }
+}
+
 /// Possible fatal errors that may happen when an image is parsed.
 #[derive(Debug)]
 pub enum ExifError {
@@ -441,3 +526,8 @@ pub type ExifResult = Result<ExifData, ExifError>;
 
 /// Type resturned by lower-level parsing functions
 pub type ExifEntryResult = Result<Vec<ExifEntry>, ExifError>;
+
+pub enum ByteAlign {
+    Intel,
+    Motorola,
+}

@@ -1,7 +1,7 @@
 use std::env;
 use std::process;
 
-use rexif::ExifTag;
+use rexif::{ByteAlign, ExifTag};
 
 /// Tries to extract EXIF data from all files passed as CLI parameters,
 /// assuming that the files contain images.
@@ -25,6 +25,8 @@ fn main() {
                         println!("      {}: {}", entry.tag, entry.value_more_readable);
                     }
                 }
+                let encoded = exif.serialize(ByteAlign::Motorola);
+                println!("{:?}", encoded);
             }
             Err(e) => {
                 eprintln!("Error in {}: {}", &arg, e);
