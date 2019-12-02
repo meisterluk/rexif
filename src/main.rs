@@ -18,11 +18,11 @@ fn main() {
                 for entry in &exif.entries {
                     if entry.tag == ExifTag::UnknownToMe {
                         /*
-                        println!("	{} {}",
+                        println!("      {} {}",
                             entry.tag_readable, entry.value_readable);
                         */
                     } else {
-                        println!("	{}: {}", entry.tag, entry.value_more_readable);
+                        println!("      {}: {}", entry.tag, entry.value_more_readable);
                     }
                 }
             }

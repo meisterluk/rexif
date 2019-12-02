@@ -13,18 +13,18 @@ pub fn detect_type(contents: &[u8]) -> FileType {
     }
 
     if contents[0] == 0xff && contents[1] == 0xd8 &&
-			contents[2] == 0xff && // contents[3] == 0xe0 &&
-			contents[6] == b'J' && contents[7] == b'F' &&
-			contents[8] == b'I' && contents[9] == b'F' &&
-			contents[10] == 0
+                        contents[2] == 0xff && // contents[3] == 0xe0 &&
+                        contents[6] == b'J' && contents[7] == b'F' &&
+                        contents[8] == b'I' && contents[9] == b'F' &&
+                        contents[10] == 0
     {
         return FileType::JPEG;
     }
     if contents[0] == 0xff && contents[1] == 0xd8 &&
-			contents[2] == 0xff && // contents[3] == 0xe0 &&
-			contents[6] == b'E' && contents[7] == b'x' &&
-			contents[8] == b'i' && contents[9] == b'f' &&
-			contents[10] == 0
+                        contents[2] == 0xff && // contents[3] == 0xe0 &&
+                        contents[6] == b'E' && contents[7] == b'x' &&
+                        contents[8] == b'i' && contents[9] == b'f' &&
+                        contents[10] == 0
     {
         return FileType::JPEG;
     }

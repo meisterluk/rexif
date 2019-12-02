@@ -20,16 +20,16 @@ pub fn strpass(e: &TagValue) -> String {
 pub fn sensitivity_type(e: &TagValue) -> String {
     if let TagValue::U16(ref v) = *e {
         match v[0] {
-			0 => "Unknown",
-			1 => "Standard output sensitivity (SOS)",
-			2 => "Recommended exposure index (REI)",
-			3 => "ISO speed",
-			4 => "Standard output sensitivity (SOS) and recommended exposure index (REI)",
-			5 => "Standard output sensitivity (SOS) and ISO speed",
-			6 => "Recommended exposure index (REI) and ISO speed",
-			7 => "Standard output sensitivity (SOS) and recommended exposure index (REI) and ISO speed",
-			n => return format!("Unknown ({})", n),
-		}.to_owned()
+            0 => "Unknown",
+            1 => "Standard output sensitivity (SOS)",
+            2 => "Recommended exposure index (REI)",
+            3 => "ISO speed",
+            4 => "Standard output sensitivity (SOS) and recommended exposure index (REI)",
+            5 => "Standard output sensitivity (SOS) and ISO speed",
+            6 => "Recommended exposure index (REI) and ISO speed",
+            7 => "Standard output sensitivity (SOS) and recommended exposure index (REI) and ISO speed",
+            n => return format!("Unknown ({})", n),
+        }.to_owned()
     } else {
         panic!(INV);
     }
