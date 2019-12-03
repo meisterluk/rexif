@@ -14,19 +14,15 @@ fn main() {
     for arg in &args[1..] {
         match rexif::parse_file(&arg) {
             Ok(exif) => {
-                println!("{} {} exif entries: {}", arg, exif.mime, exif.entries.len());
                 for entry in &exif.entries {
                     if entry.tag == ExifTag::UnknownToMe {
                         /*
                         println!("      {} {}",
                             entry.tag_readable, entry.value_readable);
                         */
-                    } else {
-                        println!("      {}: {}", entry.tag, entry.value_more_readable);
                     }
                 }
                 let encoded = exif.serialize(ByteAlign::Motorola);
-                println!("{:?}", encoded);
             }
             Err(e) => {
                 eprintln!("Error in {}: {}", &arg, e);

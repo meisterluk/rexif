@@ -12,23 +12,59 @@ pub struct ExifData {
     pub entries: Vec<ExifEntry>,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum IfdKind {
+    Ifd0,
+    Ifd1,
+    Exif,
+    Gps,
+    Makernote,
+    Interoperability,
+}
+
 const EXIF_HEADER: &[u8] = &[0x45, 0x78, 0x69, 0x66, 0x00, 0x00];
 
+/// Serialize GPS/Exif IFD entries.
+fn serialize_ifd(serialized: &mut Vec<u8>, entries: Vec<&ExifEntry>, pos: Option<usize>) {
+
+    let bytes = (serialized.len() as u32).to_be_bytes();
+    // Serialize the number of directory entries in this IFD
+    serialized.extend(&(entries.len() as u16).to_be_bytes());
+
+    // Write the offset of this IFD in IFD-0.
+    let pos = pos.expect("Expected to have seen ExifOffset tagin IFD0");
+    for (place, byte) in serialized.iter_mut().skip(pos).zip(bytes.iter()) {
+        *place = *byte;
+    }
+
+    let mut data_patches = vec![];
+
+    for entry in entries {
+        entry.serialize(serialized, &mut data_patches);
+    }
+
+    serialized.extend(&[0, 0, 0, 0]);
+    for patch in &data_patches {
+        // The position of the data pointed to by the IFD entries serialized above.
+        let bytes = (serialized.len() as u32).to_be_bytes();
+        serialized.extend(&patch.data);
+        for (place, byte) in serialized.iter_mut().skip(patch.offset_pos as usize).zip(bytes.iter()) {
+            *place = *byte;
+        }
+    }
+}
+
 impl ExifData {
+
     pub fn serialize(&self, align: ByteAlign) -> Vec<u8> {
         if let ByteAlign::Intel = align {
             unimplemented!("Intel byte align");
         }
+
         let mut serialized = vec![];
 
-        // Generate the Exif header
-        //serialized.extend(EXIF_HEADER);
-
-        // The offset of the TIFF header. This is used to calculate offsets relative to the start
-        // of the TIFF header.
-        //let tiff_header_start = serialized.len();
-
         let tiff_header = &[0x4d, 0x4d, 0x00, 0x2a];
+
         // Generate the TIFF header (for now, always use Motorola byte order)
         serialized.extend(tiff_header);
 
@@ -37,60 +73,73 @@ impl ExifData {
         let offset = (tiff_header.len() as u32 + std::mem::size_of::<u32>() as u32).to_be_bytes();
         serialized.extend(&offset);
 
+        let ifd0 = self.entries.iter().filter(|&e| e.kind == IfdKind::Ifd0).collect::<Vec<&ExifEntry>>();
+        let ifd1 = self.entries.iter().filter(|&e| e.kind == IfdKind::Ifd1).collect::<Vec<&ExifEntry>>();
+        let exif = self.entries.iter().filter(|&e| e.kind == IfdKind::Exif).collect::<Vec<&ExifEntry>>();
+        let gps = self.entries.iter().filter(|&e| e.kind == IfdKind::Gps).collect::<Vec<&ExifEntry>>();
+
+        let mut data_patches = vec![];
+
         // Serialize the number of directory entries in this IFD
-        serialized.extend(&(self.entries.len() as u16).to_be_bytes());
+        serialized.extend(&(ifd0.len() as u16).to_be_bytes());
 
-        let mut patchpoints = vec![];
+        // The position of the data in an Exif Offset entry.
+        let mut exif_pos = None;
 
-        for entry in &self.entries {
-            // Serialize the entry
-            let ifd_data = &entry.ifd;
-            assert!(ifd_data.namespace == Namespace::Standard, "Found non-standard namespace");
+        // The position of the data in an GPS Offset entry.
+        let mut gps_pos = None;
 
-            // Serialize the tag (2 bytes)
-            serialized.extend(&ifd_data.tag.to_be_bytes());
+        for entry in ifd0 {
+            entry.serialize(&mut serialized, &mut data_patches);
 
-            // Serialize the data format (2 bytes)
-            serialized.extend(&(ifd_data.format as u16).to_be_bytes());
+            if entry.tag == ExifTag::ExifOffset {
+                exif_pos = Some(serialized.len() - 4);
+            }
 
-            // Serialize the number of components (4 bytes)
-            serialized.extend(&ifd_data.count.to_be_bytes());
-
-            // Serialize the data value/offset to data value (4 bytes)
-            if ifd_data.data.len() <= 4 {
-                serialized.extend(&ifd_data.data);
-            } else {
-                patchpoints.push(Patchpoint::new(serialized.len() as u32, &ifd_data.data));
-                // to be filled out later
-                serialized.extend(&[0, 0, 0, 0]);
+            if entry.tag == ExifTag::GPSOffset {
+                gps_pos = Some(serialized.len() - 4);
             }
         }
 
-        serialized.extend(&[0, 0, 0, 0]);
+        if ifd1.is_empty() {
+            serialized.extend(&[0, 0, 0, 0]);
+        } else {
+            unimplemented!("IFD-1");
+        }
 
-        for patch in patchpoints {
+        for patch in &data_patches {
             // The position of the data pointed to by the IFD entries serialized above.
             let bytes = (serialized.len() as u32).to_be_bytes();
             serialized.extend(&patch.data);
-            let off = patch.offset_pos as usize;
-            for i in 0..4 {
-                serialized[off + i] = bytes[i];
+            for (place, byte) in serialized.iter_mut().skip(patch.offset_pos as usize).zip(bytes.iter()) {
+                *place = *byte;
             }
         }
 
-        serialized
+        if !exif.is_empty() {
+            serialize_ifd(&mut serialized, exif, exif_pos);
+        }
+
+        if !gps.is_empty() {
+            serialize_ifd(&mut serialized, gps, gps_pos);
+        }
+
+        // XXX Makernote, Interoperability IFD, Thumbnail image
+
+        // Generate the Exif header
+        [EXIF_HEADER, &serialized].concat()
     }
 }
 
-struct Patchpoint {
+pub(crate) struct Patch {
     // The position where to write the offset in the file where the data will be located
     offset_pos: u32,
     data: Vec<u8>,
 }
 
-impl Patchpoint {
-    pub fn new(offset_pos: u32, data: &[u8]) -> Patchpoint {
-        Patchpoint {
+impl Patch {
+    pub fn new(offset_pos: u32, data: &[u8]) -> Patch {
+        Patch {
             offset_pos,
             data: data.to_vec(),
         }
@@ -437,6 +486,33 @@ pub struct ExifEntry {
     /// If tag is `UnknownToMe`,
     /// this member contains the same string as `value_readable`.
     pub value_more_readable: String,
+    pub kind: IfdKind,
+}
+
+impl ExifEntry {
+    pub(crate) fn serialize(&self, serialized: &mut Vec<u8>, data_patches: &mut Vec<Patch>) {
+        // Serialize the entry
+        let ifd_data = &self.ifd;
+        assert!(ifd_data.namespace == Namespace::Standard, "Found non-standard namespace");
+
+        // Serialize the tag (2 bytes)
+        serialized.extend(&ifd_data.tag.to_be_bytes());
+
+        // Serialize the data format (2 bytes)
+        serialized.extend(&(ifd_data.format as u16).to_be_bytes());
+
+        // Serialize the number of components (4 bytes)
+        serialized.extend(&ifd_data.count.to_be_bytes());
+
+        // Serialize the data value/offset to data value (4 bytes)
+        if ifd_data.length() <= 4 {
+            serialized.extend(&ifd_data.data);
+        } else {
+            data_patches.push(Patch::new(serialized.len() as u32, &ifd_data.data));
+            // to be filled out later
+            serialized.extend(&[0, 0, 0, 0]);
+        }
+    }
 }
 
 /// Tag value enumeration. It works as a variant type. Each value is
