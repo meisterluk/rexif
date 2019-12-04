@@ -17,20 +17,17 @@
 //!
 //! ```
 //! use std::error::Error;
+//!
 //! let file_name = "foo.jpg";
 //! match rexif::parse_file(&file_name) {
 //!     Ok(exif) => {
-//!             println!("{} {} exif entries: {}", file_name,
-//!                     exif.mime, exif.entries.len());
-//!
-//!             for entry in &exif.entries {
-//!                     println!("      {}: {}",
-//!                                     entry.tag,
-//!                                     entry.value_more_readable);
-//!             }
+//!         println!("{} {} exif entries: {}", file_name, exif.mime, exif.entries.len());
+//!         for entry in &exif.entries {
+//!             println!("\t{}: {}", entry.tag, entry.value_more_readable);
+//!         }
 //!     },
 //!     Err(e) => {
-//!             print!("Error in {}: {}", &file_name, e)
+//!         print!("Error in {}: {}", &file_name, e)
 //!     }
 //! }
 //! ```

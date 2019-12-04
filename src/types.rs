@@ -3,6 +3,9 @@ use std::fmt;
 use std::io;
 use std::result::Result;
 
+const EXIF_HEADER: &[u8] = &[0x45, 0x78, 0x69, 0x66, 0x00, 0x00];
+const DATA_WIDTH: usize = 4;
+
 /// Top-level structure that contains all parsed metadata inside an image
 #[derive(Debug)]
 pub struct ExifData {
@@ -12,17 +15,14 @@ pub struct ExifData {
     pub entries: Vec<ExifEntry>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum IfdKind {
-    Ifd0,
-    Ifd1,
-    Exif,
-    Gps,
-    Makernote,
-    Interoperability,
+impl ExifData {
+    pub fn new<S: Into<String>>(mime: S, entries: Vec<ExifEntry>) -> Self {
+        ExifData {
+            mime: mime.into(),
+            entries,
+        }
+    }
 }
-
-const EXIF_HEADER: &[u8] = &[0x45, 0x78, 0x69, 0x66, 0x00, 0x00];
 
 /// Serialize GPS/Exif IFD entries.
 fn serialize_ifd(serialized: &mut Vec<u8>, entries: Vec<&ExifEntry>, pos: Option<usize>) {
@@ -40,7 +40,7 @@ fn serialize_ifd(serialized: &mut Vec<u8>, entries: Vec<&ExifEntry>, pos: Option
     let mut data_patches = vec![];
 
     for entry in entries {
-        entry.serialize(serialized, &mut data_patches);
+        entry.ifd.serialize(serialized, &mut data_patches);
     }
 
     serialized.extend(&[0, 0, 0, 0]);
@@ -55,15 +55,15 @@ fn serialize_ifd(serialized: &mut Vec<u8>, entries: Vec<&ExifEntry>, pos: Option
 }
 
 impl ExifData {
-
     pub fn serialize(&self, align: ByteAlign) -> Vec<u8> {
-        if let ByteAlign::Intel = align {
+        let byte_align = if let ByteAlign::Intel = align {
             unimplemented!("Intel byte align");
-        }
+        } else {
+            b'M'
+        };
 
         let mut serialized = vec![];
-
-        let tiff_header = &[0x4d, 0x4d, 0x00, 0x2a];
+        let tiff_header = &[byte_align, byte_align, 0x00, 0x2a];
 
         // Generate the TIFF header (for now, always use Motorola byte order)
         serialized.extend(tiff_header);
@@ -78,7 +78,7 @@ impl ExifData {
         let exif = self.entries.iter().filter(|&e| e.kind == IfdKind::Exif).collect::<Vec<&ExifEntry>>();
         let gps = self.entries.iter().filter(|&e| e.kind == IfdKind::Gps).collect::<Vec<&ExifEntry>>();
 
-        let mut data_patches = vec![];
+        assert!(ifd1.is_empty());
 
         // Serialize the number of directory entries in this IFD
         serialized.extend(&(ifd0.len() as u16).to_be_bytes());
@@ -89,15 +89,14 @@ impl ExifData {
         // The position of the data in an GPS Offset entry.
         let mut gps_pos = None;
 
+        let mut data_patches = vec![];
         for entry in ifd0 {
-            entry.serialize(&mut serialized, &mut data_patches);
-
+            entry.ifd.serialize(&mut serialized, &mut data_patches);
             if entry.tag == ExifTag::ExifOffset {
-                exif_pos = Some(serialized.len() - 4);
+                exif_pos = Some(serialized.len() - DATA_WIDTH);
             }
-
             if entry.tag == ExifTag::GPSOffset {
-                gps_pos = Some(serialized.len() - 4);
+                gps_pos = Some(serialized.len() - DATA_WIDTH);
             }
         }
 
@@ -124,7 +123,7 @@ impl ExifData {
             serialize_ifd(&mut serialized, gps, gps_pos);
         }
 
-        // XXX Makernote, Interoperability IFD, Thumbnail image
+        // TODO Makernote, Interoperability IFD, Thumbnail image
 
         // Generate the Exif header
         [EXIF_HEADER, &serialized].concat()
@@ -187,6 +186,31 @@ pub struct IfdEntry {
     /// It is important to have 'endianess' per IFD entry, because some manufacturer-specific
     /// entries may have fixed endianess (regardeless of TIFF container's general endianess).
     pub le: bool,
+}
+
+impl IfdEntry {
+    pub(crate) fn serialize(&self, serialized: &mut Vec<u8>, data_patches: &mut Vec<Patch>) {
+        // Serialize the entry
+        assert!(self.namespace == Namespace::Standard, "Found non-standard namespace");
+
+        // Serialize the tag (2 bytes)
+        serialized.extend(&self.tag.to_be_bytes());
+
+        // Serialize the data format (2 bytes)
+        serialized.extend(&(self.format as u16).to_be_bytes());
+
+        // Serialize the number of components (4 bytes)
+        serialized.extend(&self.count.to_be_bytes());
+
+        // Serialize the data value/offset to data value (4 bytes)
+        if self.in_ifd() {
+            serialized.extend(&self.data);
+        } else {
+            data_patches.push(Patch::new(serialized.len() as u32, &self.data));
+            // to be filled out later
+            serialized.extend(&[0, 0, 0, 0]);
+        }
+    }
 }
 
 /// Enumeration that represent EXIF tag namespaces. Namespaces exist to
@@ -489,32 +513,6 @@ pub struct ExifEntry {
     pub kind: IfdKind,
 }
 
-impl ExifEntry {
-    pub(crate) fn serialize(&self, serialized: &mut Vec<u8>, data_patches: &mut Vec<Patch>) {
-        // Serialize the entry
-        let ifd_data = &self.ifd;
-        assert!(ifd_data.namespace == Namespace::Standard, "Found non-standard namespace");
-
-        // Serialize the tag (2 bytes)
-        serialized.extend(&ifd_data.tag.to_be_bytes());
-
-        // Serialize the data format (2 bytes)
-        serialized.extend(&(ifd_data.format as u16).to_be_bytes());
-
-        // Serialize the number of components (4 bytes)
-        serialized.extend(&ifd_data.count.to_be_bytes());
-
-        // Serialize the data value/offset to data value (4 bytes)
-        if ifd_data.length() <= 4 {
-            serialized.extend(&ifd_data.data);
-        } else {
-            data_patches.push(Patch::new(serialized.len() as u32, &ifd_data.data));
-            // to be filled out later
-            serialized.extend(&[0, 0, 0, 0]);
-        }
-    }
-}
-
 /// Tag value enumeration. It works as a variant type. Each value is
 /// actually a vector because many EXIF tags are collections of values.
 /// Exif tags with single values are represented as single-item vectors.
@@ -603,7 +601,46 @@ pub type ExifResult = Result<ExifData, ExifError>;
 /// Type resturned by lower-level parsing functions
 pub type ExifEntryResult = Result<Vec<ExifEntry>, ExifError>;
 
+/// The byte alignment of the TIFF data.
 pub enum ByteAlign {
     Intel,
     Motorola,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum IfdKind {
+    Ifd0,
+    Ifd1,
+    Exif,
+    Gps,
+    Makernote,
+    Interoperability,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_serialize_empty() {
+        let exif = ExifData::new("image/jpeg", vec![]);
+        let tiff_header = [b'M', b'M', 0, 42, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0];
+        assert_eq!(exif.serialize(ByteAlign::Motorola), [EXIF_HEADER, &tiff_header].concat());
+    }
+
+    #[test]
+    fn test_serialize_jpeg_with_gps() {
+        // TODO
+
+    }
+
+    #[test]
+    fn test_serialize_jpeg_with_thumbnail() {
+        // TODO
+    }
+
+    #[test]
+    fn test_serialize_jpeg_intel_byte_align() {
+        // TODO
+    }
 }
