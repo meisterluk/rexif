@@ -69,27 +69,20 @@ pub fn parse_buffer(contents: &[u8]) -> ExifResult {
 pub fn parse_buffer_quiet(contents: &[u8]) -> (ExifResult, Vec<String>) {
     let mime = detect_type(contents);
     let mut warnings = vec![];
-    let ((entries, le), mime) = match mime {
+    let (entries, le) = match mime {
         FileType::Unknown => return (Err(ExifError::FileTypeUnknown), warnings),
-        FileType::TIFF => {
-            (parse_tiff(contents, &mut warnings), "image/tiff")
-        },
+        FileType::TIFF => parse_tiff(contents, &mut warnings),
         FileType::JPEG => {
-            let x =
             find_embedded_tiff_in_jpeg(contents).and_then(|(offset, size)| {
                 Ok(parse_tiff(&contents[offset..offset + size], &mut warnings))
-            });
-            (
-                x.unwrap(),
-                "image/jpeg",
-            )
+            }).unwrap()
         }
     };
 
     (
-        Ok(ExifData {
+        entries.map(|entries| ExifData {
             mime: mime.to_string(),
-            entries: entries.unwrap(),
+            entries,
             le
         }),
         warnings,

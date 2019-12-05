@@ -3,10 +3,10 @@ use std::fmt;
 use std::io;
 use std::result::Result;
 
-const EXIF_HEADER: &[u8] = &[0x45, 0x78, 0x69, 0x66, 0x00, 0x00];
-const INTEL_TIFF_HEADER: &[u8] = &[b'I', b'I', 0x2a, 0x00];
-const MOTOROLA_TIFF_HEADER: &[u8] = &[b'M', b'M', 0x00, 0x2a];
-const DATA_WIDTH: usize = 4;
+pub const EXIF_HEADER: &[u8] = &[b'E', b'x', b'i', b'f', 0x00, 0x00];
+pub(crate) const INTEL_TIFF_HEADER: &[u8] = &[b'I', b'I', 0x2a, 0x00];
+pub(crate) const MOTOROLA_TIFF_HEADER: &[u8] = &[b'M', b'M', 0x00, 0x2a];
+pub(crate) const DATA_WIDTH: usize = 4;
 
 /// Top-level structure that contains all parsed metadata inside an image
 #[derive(Debug, PartialEq)]
@@ -112,8 +112,11 @@ impl ExifData {
 
         // TODO Makernote, Interoperability IFD, Thumbnail image
 
-        // Generate the Exif header
-        [EXIF_HEADER, &serialized].concat()
+        if self.mime == "image/jpeg" {
+            [EXIF_HEADER, &serialized].concat()
+        } else {
+            serialized
+        }
     }
 
     /// Serialize GPS/Exif IFD entries.
@@ -227,13 +230,6 @@ pub struct IfdEntry {
 // entries should still be considered equal.
 impl PartialEq for IfdEntry {
     fn eq(&self, other: &IfdEntry) -> bool {
-        println!("In ifd? {:X?} {:?} {:?} {:?} {:?} {:?} {:?} {:?}",
-            self.tag,
-            self.in_ifd(),
-            self.data, other.data,
-            self.ifd_data, other.ifd_data,
-            self.ext_data, other.ext_data,
-        );
         let data_eq = if self.in_ifd() && !self.tag == ExifTag::ExifOffset as u16 && !self.tag == ExifTag::GPSOffset as u16 {
             self.data == other.data && self.ifd_data == other.ifd_data && self.ext_data == other.ext_data
         } else {
@@ -697,32 +693,4 @@ pub enum IfdKind {
     Gps,
     Makernote,
     Interoperability,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_serialize_empty() {
-        let exif = ExifData::new("image/jpeg", vec![], false);
-        let tiff_header = [b'M', b'M', 0, 42, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0];
-        assert_eq!(exif.serialize(), [EXIF_HEADER, &tiff_header].concat());
-    }
-
-    #[test]
-    fn test_serialize_jpeg_with_gps() {
-        // TODO
-
-    }
-
-    #[test]
-    fn test_serialize_jpeg_with_thumbnail() {
-        // TODO
-    }
-
-    #[test]
-    fn test_serialize_jpeg_intel_byte_align() {
-        // TODO
-    }
 }
