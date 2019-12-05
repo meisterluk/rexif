@@ -108,9 +108,9 @@ pub fn find_embedded_tiff_in_jpeg(contents: &[u8]) -> Result<(usize, usize), Exi
 mod test {
     use glob::glob;
 
+    use crate::*;
     use std::fs;
     use std::path::Path;
-    use crate::*;
 
     const TEST_IMAGE_DIR: &str = "./tests/img";
     const JPEG_PATTERN: &str = "*.jpg";
@@ -118,34 +118,38 @@ mod test {
     #[cfg(test)]
     fn cmp_serialized_exif_with_original<P: AsRef<Path>>(file: P) -> Result<(), std::io::Error> {
         let parsed_exif1 = parse_file(&file).unwrap();
-        let serialized_exif1 = parsed_exif1.serialize(ByteAlign::Motorola);
+        let serialized_exif1 = parsed_exif1.serialize();
 
         // Skip over the Exif header ("Exif\0\0").
-        let res = parse_tiff(&serialized_exif1[6..], &mut vec![]);
-        let parsed_exif2 = res.map(|entries| ExifData {
-            mime: "image/jpeg".to_string(),
-            entries,
-        }).unwrap();
+        let (entries, le) = parse_tiff(&serialized_exif1[6..], &mut vec![]);
 
-        let serialized_exif2 = parsed_exif2.serialize(ByteAlign::Motorola);
+        let parsed_exif2 = ExifData {
+            mime: "image/jpeg".to_string(),
+            entries: entries.unwrap(),
+            le,
+        };
+
+        let serialized_exif2 = parsed_exif2.serialize();
         assert_eq!(serialized_exif1, serialized_exif2);
+        assert_eq!(parsed_exif1, parsed_exif2);
 
         Ok(())
     }
 
     #[test]
     fn test_exif_serialization() -> Result<(), std::io::Error> {
-        let jpegs = glob(Path::new(TEST_IMAGE_DIR)
-            .join(JPEG_PATTERN)
-            .to_str()
-            .expect("Path is not valid unicode."),
+        let jpegs = glob(
+            Path::new(TEST_IMAGE_DIR)
+                .join(JPEG_PATTERN)
+                .to_str()
+                .expect("Path is not valid unicode."),
         )
         .expect("Failed to read glob pattern")
         .filter_map(Result::ok)
         .collect::<Vec<_>>();
 
         for jpeg in jpegs {
-            cmp_serialized_exif_with_original(jpeg)?;
+            cmp_serialized_exif_with_original(&jpeg)?;
         }
 
         Ok(())

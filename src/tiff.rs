@@ -230,11 +230,11 @@ pub fn parse_ifds(
 }
 
 /// Parse a TIFF image, or embedded TIFF in JPEG, in order to get IFDs and then the EXIF data
-pub fn parse_tiff(contents: &[u8], warnings: &mut Vec<String>) -> ExifEntryResult {
+pub fn parse_tiff(contents: &[u8], warnings: &mut Vec<String>) -> (ExifEntryResult, bool) {
     let mut le = false;
 
     if contents.len() < 8 {
-        return Err(ExifError::TiffTruncated);
+        return (Err(ExifError::TiffTruncated), false);
     } else if contents[0] == b'I' && contents[1] == b'I' && contents[2] == 42 && contents[3] == 0 {
         /* TIFF little-endian */
         le = true;
@@ -245,10 +245,10 @@ pub fn parse_tiff(contents: &[u8], warnings: &mut Vec<String>) -> ExifEntryResul
             "Preamble is {:x} {:x} {:x} {:x}",
             contents[0], contents[1], contents[2], contents[3]
         );
-        return Err(ExifError::TiffBadPreamble(err));
+        return (Err(ExifError::TiffBadPreamble(err)), false);
     }
 
     let offset = read_u32(le, &contents[4..8]) as usize;
 
-    parse_ifds(le, offset, &contents, warnings)
+    (parse_ifds(le, offset, &contents, warnings), le)
 }

@@ -4,73 +4,51 @@ use std::io;
 use std::result::Result;
 
 const EXIF_HEADER: &[u8] = &[0x45, 0x78, 0x69, 0x66, 0x00, 0x00];
+const INTEL_TIFF_HEADER: &[u8] = &[b'I', b'I', 0x2a, 0x00];
+const MOTOROLA_TIFF_HEADER: &[u8] = &[b'M', b'M', 0x00, 0x2a];
 const DATA_WIDTH: usize = 4;
 
 /// Top-level structure that contains all parsed metadata inside an image
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ExifData {
     /// MIME type of the parsed image. It may be "image/jpeg", "image/tiff", or empty if unrecognized.
     pub mime: String,
     /// Collection of EXIF entries found in the image
     pub entries: Vec<ExifEntry>,
+    /// If `true`, this uses little-endian byte ordering for the raw bytes. Otherwise, it uses big-endian ordering.
+    pub le: bool,
 }
 
 impl ExifData {
-    pub fn new<S: Into<String>>(mime: S, entries: Vec<ExifEntry>) -> Self {
+    pub fn new<S: Into<String>>(mime: S, entries: Vec<ExifEntry>, le: bool) -> Self {
         ExifData {
             mime: mime.into(),
             entries,
-        }
-    }
-}
-
-/// Serialize GPS/Exif IFD entries.
-fn serialize_ifd(serialized: &mut Vec<u8>, entries: Vec<&ExifEntry>, pos: Option<usize>) {
-
-    let bytes = (serialized.len() as u32).to_be_bytes();
-    // Serialize the number of directory entries in this IFD
-    serialized.extend(&(entries.len() as u16).to_be_bytes());
-
-    // Write the offset of this IFD in IFD-0.
-    let pos = pos.expect("Expected to have seen ExifOffset tagin IFD0");
-    for (place, byte) in serialized.iter_mut().skip(pos).zip(bytes.iter()) {
-        *place = *byte;
-    }
-
-    let mut data_patches = vec![];
-
-    for entry in entries {
-        entry.ifd.serialize(serialized, &mut data_patches);
-    }
-
-    serialized.extend(&[0, 0, 0, 0]);
-    for patch in &data_patches {
-        // The position of the data pointed to by the IFD entries serialized above.
-        let bytes = (serialized.len() as u32).to_be_bytes();
-        serialized.extend(&patch.data);
-        for (place, byte) in serialized.iter_mut().skip(patch.offset_pos as usize).zip(bytes.iter()) {
-            *place = *byte;
+            le,
         }
     }
 }
 
 impl ExifData {
-    pub fn serialize(&self, align: ByteAlign) -> Vec<u8> {
-        let byte_align = if let ByteAlign::Intel = align {
-            unimplemented!("Intel byte align");
+    pub fn serialize(&self) -> Vec<u8> {
+        let tiff_header = if self.le {
+            INTEL_TIFF_HEADER
         } else {
-            b'M'
+            MOTOROLA_TIFF_HEADER
         };
 
         let mut serialized = vec![];
-        let tiff_header = &[byte_align, byte_align, 0x00, 0x2a];
 
         // Generate the TIFF header (for now, always use Motorola byte order)
         serialized.extend(tiff_header);
 
         // The offset to IFD-0. IFD-0 follows immediately after the TIFF header.
         // The offset is a 4-byte value - serialize it to bytes:
-        let offset = (tiff_header.len() as u32 + std::mem::size_of::<u32>() as u32).to_be_bytes();
+        let offset = if self.le {
+            (tiff_header.len() as u32 + std::mem::size_of::<u32>() as u32).to_le_bytes()
+        } else {
+            (tiff_header.len() as u32 + std::mem::size_of::<u32>() as u32).to_be_bytes()
+        };
         serialized.extend(&offset);
 
         let ifd0 = self.entries.iter().filter(|&e| e.kind == IfdKind::Ifd0).collect::<Vec<&ExifEntry>>();
@@ -81,22 +59,26 @@ impl ExifData {
         assert!(ifd1.is_empty());
 
         // Serialize the number of directory entries in this IFD
-        serialized.extend(&(ifd0.len() as u16).to_be_bytes());
+        if self.le {
+            serialized.extend(&(ifd0.len() as u16).to_le_bytes());
+        } else {
+            serialized.extend(&(ifd0.len() as u16).to_be_bytes());
+        };
 
         // The position of the data in an Exif Offset entry.
-        let mut exif_pos = None;
+        let mut exif_ifd_pointer = None;
 
         // The position of the data in an GPS Offset entry.
-        let mut gps_pos = None;
+        let mut gps_ifd_pointer = None;
 
         let mut data_patches = vec![];
         for entry in ifd0 {
             entry.ifd.serialize(&mut serialized, &mut data_patches);
             if entry.tag == ExifTag::ExifOffset {
-                exif_pos = Some(serialized.len() - DATA_WIDTH);
+                exif_ifd_pointer = Some(serialized.len() - DATA_WIDTH);
             }
             if entry.tag == ExifTag::GPSOffset {
-                gps_pos = Some(serialized.len() - DATA_WIDTH);
+                gps_ifd_pointer = Some(serialized.len() - DATA_WIDTH);
             }
         }
 
@@ -108,7 +90,12 @@ impl ExifData {
 
         for patch in &data_patches {
             // The position of the data pointed to by the IFD entries serialized above.
-            let bytes = (serialized.len() as u32).to_be_bytes();
+            let bytes = if self.le {
+                (serialized.len() as u32).to_le_bytes()
+            } else {
+                (serialized.len() as u32).to_be_bytes()
+            };
+
             serialized.extend(&patch.data);
             for (place, byte) in serialized.iter_mut().skip(patch.offset_pos as usize).zip(bytes.iter()) {
                 *place = *byte;
@@ -116,11 +103,11 @@ impl ExifData {
         }
 
         if !exif.is_empty() {
-            serialize_ifd(&mut serialized, exif, exif_pos);
+            self.serialize_ifd(&mut serialized, exif, exif_ifd_pointer);
         }
 
         if !gps.is_empty() {
-            serialize_ifd(&mut serialized, gps, gps_pos);
+            self.serialize_ifd(&mut serialized, gps, gps_ifd_pointer);
         }
 
         // TODO Makernote, Interoperability IFD, Thumbnail image
@@ -128,10 +115,57 @@ impl ExifData {
         // Generate the Exif header
         [EXIF_HEADER, &serialized].concat()
     }
+
+    /// Serialize GPS/Exif IFD entries.
+    fn serialize_ifd(
+        &self,
+        serialized: &mut Vec<u8>,
+        entries: Vec<&ExifEntry>,
+        pos: Option<usize>,
+    ) {
+        let bytes = if self.le {
+            (serialized.len() as u32).to_le_bytes()
+        } else {
+            (serialized.len() as u32).to_be_bytes()
+        };
+
+        // Serialize the number of directory entries in this IFD
+        if self.le {
+            serialized.extend(&(entries.len() as u16).to_le_bytes());
+        } else {
+            serialized.extend(&(entries.len() as u16).to_be_bytes());
+        }
+
+        // Write the offset of this IFD in IFD-0.
+        let pos = pos.expect("Expected to have seen ExifOffset tagin IFD0");
+        for (place, byte) in serialized.iter_mut().skip(pos).zip(bytes.iter()) {
+            *place = *byte;
+        }
+
+        let mut data_patches = vec![];
+
+        for entry in entries {
+            entry.ifd.serialize(serialized, &mut data_patches);
+        }
+
+        serialized.extend(&[0, 0, 0, 0]);
+        for patch in &data_patches {
+            // The position of the data pointed to by the IFD entries serialized above.
+            let bytes = if self.le {
+                (serialized.len() as u32).to_le_bytes()
+            } else {
+                (serialized.len() as u32).to_be_bytes()
+            };
+            serialized.extend(&patch.data);
+            for (place, byte) in serialized.iter_mut().skip(patch.offset_pos as usize).zip(bytes.iter()) {
+                *place = *byte;
+            }
+        }
+    }
 }
 
 pub(crate) struct Patch {
-    // The position where to write the offset in the file where the data will be located
+    /// The position where to write the offset in the file where the data will be located.
     offset_pos: u32,
     data: Vec<u8>,
 }
@@ -188,19 +222,59 @@ pub struct IfdEntry {
     pub le: bool,
 }
 
+// Do not include `ifd_data` in the comparison, as it may in fact contain the offset to the data,
+// and two Exif entries may contain the same data, but at different offsets. In that case, the
+// entries should still be considered equal.
+impl PartialEq for IfdEntry {
+    fn eq(&self, other: &IfdEntry) -> bool {
+        println!("In ifd? {:X?} {:?} {:?} {:?} {:?} {:?} {:?} {:?}",
+            self.tag,
+            self.in_ifd(),
+            self.data, other.data,
+            self.ifd_data, other.ifd_data,
+            self.ext_data, other.ext_data,
+        );
+        let data_eq = if self.in_ifd() && !self.tag == ExifTag::ExifOffset as u16 && !self.tag == ExifTag::GPSOffset as u16 {
+            self.data == other.data && self.ifd_data == other.ifd_data && self.ext_data == other.ext_data
+        } else {
+            true
+        };
+
+        self.namespace == other.namespace && self.tag == other.tag && self.count == other.count &&
+            data_eq && self.le == other.le
+
+    }
+}
+
 impl IfdEntry {
-    pub(crate) fn serialize(&self, serialized: &mut Vec<u8>, data_patches: &mut Vec<Patch>) {
+    pub(crate) fn serialize(
+        &self,
+        serialized: &mut Vec<u8>,
+        data_patches: &mut Vec<Patch>,
+    ) {
         // Serialize the entry
         assert!(self.namespace == Namespace::Standard, "Found non-standard namespace");
 
         // Serialize the tag (2 bytes)
-        serialized.extend(&self.tag.to_be_bytes());
+        if self.le {
+            serialized.extend(&self.tag.to_le_bytes());
+        } else {
+            serialized.extend(&self.tag.to_be_bytes());
+        };
 
         // Serialize the data format (2 bytes)
-        serialized.extend(&(self.format as u16).to_be_bytes());
+        if self.le {
+            serialized.extend(&(self.format as u16).to_le_bytes());
+        } else {
+            serialized.extend(&(self.format as u16).to_be_bytes());
+        }
 
         // Serialize the number of components (4 bytes)
-        serialized.extend(&self.count.to_be_bytes());
+        if self.le {
+            serialized.extend(&self.count.to_le_bytes());
+        } else {
+            serialized.extend(&self.count.to_be_bytes());
+        }
 
         // Serialize the data value/offset to data value (4 bytes)
         if self.in_ifd() {
@@ -513,10 +587,24 @@ pub struct ExifEntry {
     pub kind: IfdKind,
 }
 
+impl PartialEq for ExifEntry {
+    fn eq(&self, other: &ExifEntry) -> bool {
+        // If the ExifEntry is an ExifOffset or a GPSOffset, the value it contains is an offset.
+        // Two entries can be equal even if they do not point to the same offset.
+        let value_eq = match self.tag {
+            ExifTag::ExifOffset | ExifTag::GPSOffset => true,
+            _ => self.value_more_readable == other.value_more_readable && self.value == other.value,
+        };
+
+        self.namespace == other.namespace && self.ifd == other.ifd && self.tag == other.tag &&
+            self.unit == other.unit && self.kind == other.kind && value_eq
+    }
+}
+
 /// Tag value enumeration. It works as a variant type. Each value is
 /// actually a vector because many EXIF tags are collections of values.
 /// Exif tags with single values are represented as single-item vectors.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum TagValue {
     /// Array of unsigned byte integers
     U8(Vec<u8>),
@@ -601,12 +689,6 @@ pub type ExifResult = Result<ExifData, ExifError>;
 /// Type resturned by lower-level parsing functions
 pub type ExifEntryResult = Result<Vec<ExifEntry>, ExifError>;
 
-/// The byte alignment of the TIFF data.
-pub enum ByteAlign {
-    Intel,
-    Motorola,
-}
-
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum IfdKind {
     Ifd0,
@@ -623,9 +705,9 @@ mod tests {
 
     #[test]
     fn test_serialize_empty() {
-        let exif = ExifData::new("image/jpeg", vec![]);
+        let exif = ExifData::new("image/jpeg", vec![], false);
         let tiff_header = [b'M', b'M', 0, 42, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0];
-        assert_eq!(exif.serialize(ByteAlign::Motorola), [EXIF_HEADER, &tiff_header].concat());
+        assert_eq!(exif.serialize(), [EXIF_HEADER, &tiff_header].concat());
     }
 
     #[test]
