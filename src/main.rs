@@ -17,12 +17,13 @@ fn main() {
                 for entry in &exif.entries {
                     if entry.tag == ExifTag::UnknownToMe {
                         /*
-                        println!("      {} {}",
+                        println!("\t{} {}",
                             entry.tag_readable, entry.value_readable);
                         */
+                    } else {
+                        println!("\t{}: {}", entry.tag, entry.value_more_readable);
                     }
                 }
-                let encoded = exif.serialize();
             }
             Err(e) => {
                 eprintln!("Error in {}: {}", &arg, e);

@@ -193,11 +193,15 @@ pub fn parse_ifds(
     let (ifd, _) = parse_ifd(false, le, count, ifd_content).ok_or(ExifError::IfdTruncated)?;
 
     for entry in &ifd {
-        if entry.tag != (((ExifTag::ExifOffset as u32) & 0xffff) as u16)
-            && entry.tag != (((ExifTag::GPSOffset as u32) & 0xffff) as u16)
-        {
+        // Identify which IFD this entry belongs to (IFD-0, Exif, Gps, IFD-1 etc)
+        let ifd_kind = if entry.tag == (((ExifTag::ExifOffset as u32) & 0xffff) as u16) {
+            IfdKind::Exif
+        } else if entry.tag == (((ExifTag::GPSOffset as u32) & 0xffff) as u16) {
+            // Gps
+            IfdKind::Gps
+        } else {
             continue;
-        }
+        };
 
         let exif_offset = entry.data_as_offset();
         if contents.len() < exif_offset {
@@ -205,13 +209,6 @@ pub fn parse_ifds(
                 "Exif SubIFD goes past EOF".to_string(),
             ));
         }
-        let ifd_kind = if entry.tag == (((ExifTag::ExifOffset as u32) & 0xffff) as u16) {
-            IfdKind::Exif
-        } else {
-            // Gps
-            IfdKind::Gps
-        };
-
         match parse_exif_ifd(le, contents, exif_offset, &mut exif_entries, warnings, ifd_kind) {
             Ok(_) => true,
             Err(e) => return Err(e),

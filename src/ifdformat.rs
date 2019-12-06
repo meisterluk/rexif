@@ -119,15 +119,19 @@ pub fn tag_value_new(f: &IfdEntry) -> TagValue {
     }
 }
 
+/// Compare two vectors of floats, and always consider NaN == NaN.
 fn vec_cmp<F: Float>(va: &[F], vb: &[F]) -> bool {
     (va.len() == vb.len()) &&  // zip stops at the shortest
      va.iter()
        .zip(vb)
-       .all(|(a,b)| (a.is_nan() && b.is_nan() || (a == b) ))
+       .all(|(a,b)| (a.is_nan() && b.is_nan() || (a == b)))
 }
 
-pub fn tag_value_eq(tag1: &TagValue, tag2: &TagValue) -> bool {
-    match (tag1, tag2) {
+/// Check if `left` == `right`. If the `left` and `right` are float vectors, this returns `true` even
+/// if they contain NaN values (as long as the two vectors are otherwise identical, and contain NaN
+/// values at the same positions).
+pub fn tag_value_eq(left: &TagValue, right: &TagValue) -> bool {
+    match (left, right) {
         (TagValue::F32(x), TagValue::F32(y)) => vec_cmp(&x, &y),
         (TagValue::F64(x), TagValue::F64(y)) => vec_cmp(&x, &y),
         (x, y) => x == y,

@@ -79,7 +79,6 @@ fn test_parse_jpeg_with_gps() -> Result<(), std::io::Error> {
     Ok(())
 }
 
-
 #[cfg(test)]
 fn cmp_serialized_exif_with_original<P: AsRef<Path>>(file: P) -> Result<(), std::io::Error> {
     let parsed_exif1 = parse_file(&file).unwrap();

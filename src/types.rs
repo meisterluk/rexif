@@ -4,10 +4,11 @@ use std::fmt;
 use std::io;
 use std::result::Result;
 
+/// The value of the Exif header.
 pub const EXIF_HEADER: &[u8] = &[b'E', b'x', b'i', b'f', 0x00, 0x00];
-pub(crate) const INTEL_TIFF_HEADER: &[u8] = &[b'I', b'I', 0x2a, 0x00];
-pub(crate) const MOTOROLA_TIFF_HEADER: &[u8] = &[b'M', b'M', 0x00, 0x2a];
-pub(crate) const DATA_WIDTH: usize = 4;
+const INTEL_TIFF_HEADER: &[u8] = &[b'I', b'I', 0x2a, 0x00];
+const MOTOROLA_TIFF_HEADER: &[u8] = &[b'M', b'M', 0x00, 0x2a];
+const DATA_WIDTH: usize = 4;
 
 /// Top-level structure that contains all parsed metadata inside an image
 #[derive(Debug, PartialEq)]
@@ -31,16 +32,22 @@ impl ExifData {
 }
 
 impl ExifData {
+    /// Serialize the metadata entries, and return the result.
+    ///
+    /// *Note*: this serializes the metadata according to its original endianness (specified
+    /// through the `le` attribute).
     pub fn serialize(&self) -> Vec<u8> {
+        // Select the right TIFF header based on the endianness.
         let tiff_header = if self.le {
             INTEL_TIFF_HEADER
         } else {
             MOTOROLA_TIFF_HEADER
         };
 
+        // The result buffer.
         let mut serialized = vec![];
 
-        // Generate the TIFF header (for now, always use Motorola byte order)
+        // Generate the TIFF header.
         serialized.extend(tiff_header);
 
         // The offset to IFD-0. IFD-0 follows immediately after the TIFF header.
@@ -52,14 +59,28 @@ impl ExifData {
         };
         serialized.extend(&offset);
 
-        let ifd0 = self.entries.iter().filter(|&e| e.kind == IfdKind::Ifd0).collect::<Vec<&ExifEntry>>();
-        let ifd1 = self.entries.iter().filter(|&e| e.kind == IfdKind::Ifd1).collect::<Vec<&ExifEntry>>();
-        let exif = self.entries.iter().filter(|&e| e.kind == IfdKind::Exif).collect::<Vec<&ExifEntry>>();
-        let gps = self.entries.iter().filter(|&e| e.kind == IfdKind::Gps).collect::<Vec<&ExifEntry>>();
+        let mut ifd0 = vec![];
+        let mut ifd1 = vec![];
+        let mut exif = vec![];
+        let mut gps = vec![];
 
+        for e in &self.entries {
+            match e.kind {
+                IfdKind::Ifd0 => ifd0.push(e),
+                IfdKind::Ifd1 => ifd1.push(e),
+                IfdKind::Exif => exif.push(e),
+                IfdKind::Gps => gps.push(e),
+                _ => {
+                    // XXX Silently ignore Makernote and Interoperability IFDs
+                },
+            }
+        }
+
+        // IFD-1 contains the thumbnail. For now, the parser discards IFD-1, so its serialization
+        // has not yet been implemented.
         assert!(ifd1.is_empty());
 
-        // Serialize the number of directory entries in this IFD
+        // Serialize the number of directory entries in this IFD.
         if self.le {
             serialized.extend(&(ifd0.len() as u16).to_le_bytes());
         } else {
@@ -72,9 +93,17 @@ impl ExifData {
         // The position of the data in an GPS Offset entry.
         let mut gps_ifd_pointer = None;
 
+        // The positions which contain offsets pointing to values in the data section of IFD-0.
+        // These offsets will be filled out (patched) later.
         let mut data_patches = vec![];
         for entry in ifd0 {
             entry.ifd.serialize(&mut serialized, &mut data_patches);
+
+            // If IFD-0 points to an Exif/GPS sub-IFD, the offset of the sub-IFD must be serialized
+            // inside IFD-0. Subtract `DATA_WIDTH` from the length, because the pointer to the
+            // sub-IFD will be written in the data section of the previously serialized entry
+            // (which is of type ExifOffset/GPSOffset precisely because its data section contains
+            // an offset to a sub-IFD).
             if entry.tag == ExifTag::ExifOffset {
                 exif_ifd_pointer = Some(serialized.len() - DATA_WIDTH);
             }
@@ -86,9 +115,12 @@ impl ExifData {
         if ifd1.is_empty() {
             serialized.extend(&[0, 0, 0, 0]);
         } else {
+            // Otherwise, serialize the pointer to IFD-1 (which is just the offset of IFD-1 in the
+            // file).
             unimplemented!("IFD-1");
         }
 
+        // Patch the offsets serialized above.
         for patch in &data_patches {
             // The position of the data pointed to by the IFD entries serialized above.
             let bytes = if self.le {
@@ -168,9 +200,10 @@ impl ExifData {
     }
 }
 
-pub(crate) struct Patch {
+pub(super) struct Patch {
     /// The position where to write the offset in the file where the data will be located.
     offset_pos: u32,
+    /// The data to add to the data section of the current IFD.
     data: Vec<u8>,
 }
 
@@ -277,7 +310,7 @@ impl IfdEntry {
             serialized.extend(&self.data);
         } else {
             data_patches.push(Patch::new(serialized.len() as u32, &self.data));
-            // to be filled out later
+            // 4 bytes that will be filled out later
             serialized.extend(&[0, 0, 0, 0]);
         }
     }
