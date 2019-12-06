@@ -1,6 +1,7 @@
 use super::lowlevel::*;
 use super::types::*;
 use std::fmt::Display;
+use num::Float;
 
 /// generic function that prints a string representation of a vector
 pub fn numarray_to_string<T: Display>(numbers: &[T]) -> String {
@@ -115,5 +116,20 @@ pub fn tag_value_new(f: &IfdEntry) -> TagValue {
         }
 
         _ => TagValue::Unknown(f.data.clone(), f.le),
+    }
+}
+
+fn vec_cmp<F: Float>(va: &[F], vb: &[F]) -> bool {
+    (va.len() == vb.len()) &&  // zip stops at the shortest
+     va.iter()
+       .zip(vb)
+       .all(|(a,b)| (a.is_nan() && b.is_nan() || (a == b) ))
+}
+
+pub fn tag_value_eq(tag1: &TagValue, tag2: &TagValue) -> bool {
+    match (tag1, tag2) {
+        (TagValue::F32(x), TagValue::F32(y)) => vec_cmp(&x, &y),
+        (TagValue::F64(x), TagValue::F64(y)) => vec_cmp(&x, &y),
+        (x, y) => x == y,
     }
 }

@@ -85,8 +85,6 @@ fn cmp_serialized_exif_with_original<P: AsRef<Path>>(file: P) -> Result<(), std:
     let parsed_exif1 = parse_file(&file).unwrap();
 
     let serialized_exif1 = parsed_exif1.serialize();
-    println!("size is suposed to be {:?}", serialized_exif1.len());
-
     let serialized_exif1 = if &parsed_exif1.mime == "image/jpeg" {
         let size = (serialized_exif1.len() as u16 + 2).to_be_bytes();
         [APP_MARKER, &size, &serialized_exif1].concat()

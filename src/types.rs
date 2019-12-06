@@ -1,4 +1,5 @@
 use super::rational::*;
+use super::ifdformat::tag_value_eq;
 use std::fmt;
 use std::io;
 use std::result::Result;
@@ -238,7 +239,6 @@ impl PartialEq for IfdEntry {
 
         self.namespace == other.namespace && self.tag == other.tag && self.count == other.count &&
             data_eq && self.le == other.le
-
     }
 }
 
@@ -589,7 +589,9 @@ impl PartialEq for ExifEntry {
         // Two entries can be equal even if they do not point to the same offset.
         let value_eq = match self.tag {
             ExifTag::ExifOffset | ExifTag::GPSOffset => true,
-            _ => self.value_more_readable == other.value_more_readable && self.value == other.value,
+            _ => {
+                self.value_more_readable == other.value_more_readable && tag_value_eq(&self.value, &other.value)
+            },
         };
 
         self.namespace == other.namespace && self.ifd == other.ifd && self.tag == other.tag &&
