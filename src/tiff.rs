@@ -10,7 +10,7 @@ type InExifResult = Result<(), ExifError>;
 /// Parse of raw IFD entry into EXIF data, if it is of a known type, and returns
 /// an ExifEntry object. If the tag is unknown, the enumeration is set to UnknownToMe,
 /// but the raw information of tag is still available in the ifd member.
-pub fn parse_exif_entry(f: &IfdEntry, warnings: &mut Vec<String>) -> ExifEntry {
+pub fn parse_exif_entry(f: &IfdEntry, warnings: &mut Vec<String>, kind: IfdKind) -> ExifEntry {
     let value = tag_value_new(f);
 
     let mut e = ExifEntry {
@@ -20,6 +20,7 @@ pub fn parse_exif_entry(f: &IfdEntry, warnings: &mut Vec<String>) -> ExifEntry {
         value: value.clone(),
         unit: "Unknown".to_string(),
         value_more_readable: format!("{}", value),
+        kind,
     };
 
     let (tag, unit, format, min_count, max_count, more_readable) = tag_to_exif(f.tag);
@@ -71,7 +72,7 @@ pub fn parse_ifd(
     subifd: bool,
     le: bool,
     count: u16,
-    contents: &[u8],
+    contents: &[u8]
 ) -> Option<(Vec<IfdEntry>, usize)> {
     let mut entries: Vec<IfdEntry> = Vec::new();
 
@@ -115,6 +116,7 @@ fn parse_exif_ifd(
     ioffset: usize,
     exif_entries: &mut Vec<ExifEntry>,
     warnings: &mut Vec<String>,
+    kind: IfdKind,
 ) -> InExifResult {
     let mut offset = ioffset;
 
@@ -149,7 +151,7 @@ fn parse_exif_ifd(
             // data is probably beyond EOF
             continue;
         }
-        let exif_entry = parse_exif_entry(entry, warnings);
+        let exif_entry = parse_exif_entry(entry, warnings, kind);
         exif_entries.push(exif_entry);
     }
 
@@ -168,7 +170,7 @@ pub fn parse_ifds(
 
     // fills exif_entries with data from IFD0
 
-    match parse_exif_ifd(le, contents, offset, &mut exif_entries, warnings) {
+    match parse_exif_ifd(le, contents, offset, &mut exif_entries, warnings, IfdKind::Ifd0) {
         Ok(_) => true,
         Err(e) => return Err(e),
     };
@@ -191,21 +193,23 @@ pub fn parse_ifds(
     let (ifd, _) = parse_ifd(false, le, count, ifd_content).ok_or(ExifError::IfdTruncated)?;
 
     for entry in &ifd {
-        if entry.tag != (((ExifTag::ExifOffset as u32) & 0xffff) as u16)
-            && entry.tag != (((ExifTag::GPSOffset as u32) & 0xffff) as u16)
-        {
+        // Identify which IFD this entry belongs to (IFD-0, Exif, Gps, IFD-1 etc)
+        let ifd_kind = if entry.tag == (((ExifTag::ExifOffset as u32) & 0xffff) as u16) {
+            IfdKind::Exif
+        } else if entry.tag == (((ExifTag::GPSOffset as u32) & 0xffff) as u16) {
+            // Gps
+            IfdKind::Gps
+        } else {
             continue;
-        }
+        };
 
         let exif_offset = entry.data_as_offset();
-
         if contents.len() < exif_offset {
             return Err(ExifError::ExifIfdTruncated(
                 "Exif SubIFD goes past EOF".to_string(),
             ));
         }
-
-        match parse_exif_ifd(le, contents, exif_offset, &mut exif_entries, warnings) {
+        match parse_exif_ifd(le, contents, exif_offset, &mut exif_entries, warnings, ifd_kind) {
             Ok(_) => true,
             Err(e) => return Err(e),
         };
@@ -223,11 +227,11 @@ pub fn parse_ifds(
 }
 
 /// Parse a TIFF image, or embedded TIFF in JPEG, in order to get IFDs and then the EXIF data
-pub fn parse_tiff(contents: &[u8], warnings: &mut Vec<String>) -> ExifEntryResult {
+pub fn parse_tiff(contents: &[u8], warnings: &mut Vec<String>) -> (ExifEntryResult, bool) {
     let mut le = false;
 
     if contents.len() < 8 {
-        return Err(ExifError::TiffTruncated);
+        return (Err(ExifError::TiffTruncated), false);
     } else if contents[0] == b'I' && contents[1] == b'I' && contents[2] == 42 && contents[3] == 0 {
         /* TIFF little-endian */
         le = true;
@@ -238,10 +242,10 @@ pub fn parse_tiff(contents: &[u8], warnings: &mut Vec<String>) -> ExifEntryResul
             "Preamble is {:x} {:x} {:x} {:x}",
             contents[0], contents[1], contents[2], contents[3]
         );
-        return Err(ExifError::TiffBadPreamble(err));
+        return (Err(ExifError::TiffBadPreamble(err)), false);
     }
 
     let offset = read_u32(le, &contents[4..8]) as usize;
 
-    parse_ifds(le, offset, &contents, warnings)
+    (parse_ifds(le, offset, &contents, warnings), le)
 }

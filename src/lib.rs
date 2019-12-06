@@ -17,21 +17,18 @@
 //!
 //! ```
 //! use std::error::Error;
+//!
 //! let file_name = "foo.jpg";
 //! match rexif::parse_file(&file_name) {
-//!	Ok(exif) => {
-//!		println!("{} {} exif entries: {}", file_name,
-//!			exif.mime, exif.entries.len());
-//!
-//!		for entry in &exif.entries {
-//!			println!("	{}: {}",
-//!					entry.tag,
-//!					entry.value_more_readable);
-//!		}
-//!	},
-//!	Err(e) => {
-//!		print!("Error in {}: {}", &file_name, e)
-//!	}
+//!     Ok(exif) => {
+//!         println!("{} {} exif entries: {}", file_name, exif.mime, exif.entries.len());
+//!         for entry in &exif.entries {
+//!             println!("\t{}: {}", entry.tag, entry.value_more_readable);
+//!         }
+//!     },
+//!     Err(e) => {
+//!         print!("Error in {}: {}", &file_name, e)
+//!     }
 //! }
 //! ```
 
@@ -72,21 +69,21 @@ pub fn parse_buffer(contents: &[u8]) -> ExifResult {
 pub fn parse_buffer_quiet(contents: &[u8]) -> (ExifResult, Vec<String>) {
     let mime = detect_type(contents);
     let mut warnings = vec![];
-    let (res, mime) = match mime {
+    let (entries, le) = match mime {
         FileType::Unknown => return (Err(ExifError::FileTypeUnknown), warnings),
-        FileType::TIFF => (parse_tiff(contents, &mut warnings), "image/tiff"),
-        FileType::JPEG => (
+        FileType::TIFF => parse_tiff(contents, &mut warnings),
+        FileType::JPEG => {
             find_embedded_tiff_in_jpeg(contents).and_then(|(offset, size)| {
-                parse_tiff(&contents[offset..offset + size], &mut warnings)
-            }),
-            "image/jpeg",
-        ),
+                Ok(parse_tiff(&contents[offset..offset + size], &mut warnings))
+            }).unwrap()
+        }
     };
 
     (
-        res.map(|entries| ExifData {
+        entries.map(|entries| ExifData {
             mime: mime.to_string(),
             entries,
+            le
         }),
         warnings,
     )

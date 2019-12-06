@@ -1,9 +1,21 @@
 use crate::types::ExifError;
 
+use std::fmt::{self, Display};
+
 pub enum FileType {
     Unknown,
     JPEG,
     TIFF,
+}
+
+impl Display for FileType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            FileType::Unknown => write!(f, "unknown"),
+            FileType::JPEG => write!(f, "image/jpeg"),
+            FileType::TIFF => write!(f, "image/tiff"),
+        }
+    }
 }
 
 /// Detect the type of an image contained in a byte buffer
@@ -12,19 +24,15 @@ pub fn detect_type(contents: &[u8]) -> FileType {
         return FileType::Unknown;
     }
 
-    if contents[0] == 0xff && contents[1] == 0xd8 &&
-			contents[2] == 0xff && // contents[3] == 0xe0 &&
-			contents[6] == b'J' && contents[7] == b'F' &&
-			contents[8] == b'I' && contents[9] == b'F' &&
-			contents[10] == 0
+    if contents[0] == 0xff && contents[1] == 0xd8 && contents[2] == 0xff && // contents[3] == 0xe0 &&
+        contents[6] == b'J' && contents[7] == b'F' && contents[8] == b'I' && contents[9] == b'F' &&
+            contents[10] == 0
     {
         return FileType::JPEG;
     }
-    if contents[0] == 0xff && contents[1] == 0xd8 &&
-			contents[2] == 0xff && // contents[3] == 0xe0 &&
-			contents[6] == b'E' && contents[7] == b'x' &&
-			contents[8] == b'i' && contents[9] == b'f' &&
-			contents[10] == 0
+    if contents[0] == 0xff && contents[1] == 0xd8 && contents[2] == 0xff && // contents[3] == 0xe0
+        contents[6] == b'E' && contents[7] == b'x' && contents[8] == b'i' && contents[9] == b'f' &&
+            contents[10] == 0
     {
         return FileType::JPEG;
     }
@@ -36,7 +44,6 @@ pub fn detect_type(contents: &[u8]) -> FileType {
         /* TIFF big-endian */
         return FileType::TIFF;
     }
-
     FileType::Unknown
 }
 

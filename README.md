@@ -18,20 +18,20 @@ welcome!
 
 ```
 match rexif::parse_file(&file_name) {
-	Ok(exif) => {
-		println!("{} {} exif entries: {}", file_name,
-			exif.mime, exif.entries.len());
+    Ok(exif) => {
+        println!("{} {} exif entries: {}", file_name,
+            exif.mime, exif.entries.len());
 
-		for entry in &exif.entries {
-			println!("	{}: {}",
-					entry.tag_readable, 
-					entry.value_more_readable);
-		}
-	},
-	Err(e) => {
-		print!("Error in {}: {} {}", &file_name,
-			Error::description(&e), e.extra).unwrap();
-	}
+        for entry in &exif.entries {
+            println!("    {}: {}",
+                    entry.tag_readable,
+                    entry.value_more_readable);
+        }
+    },
+    Err(e) => {
+        print!("Error in {}: {} {}", &file_name,
+            Error::description(&e), e.extra).unwrap();
+    }
 }
 ```
 

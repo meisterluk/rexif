@@ -14,15 +14,14 @@ fn main() {
     for arg in &args[1..] {
         match rexif::parse_file(&arg) {
             Ok(exif) => {
-                println!("{} {} exif entries: {}", arg, exif.mime, exif.entries.len());
                 for entry in &exif.entries {
                     if entry.tag == ExifTag::UnknownToMe {
                         /*
-                        println!("	{} {}",
+                        println!("\t{} {}",
                             entry.tag_readable, entry.value_readable);
                         */
                     } else {
-                        println!("	{}: {}", entry.tag, entry.value_more_readable);
+                        println!("\t{}: {}", entry.tag, entry.value_more_readable);
                     }
                 }
             }
