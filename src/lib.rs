@@ -73,9 +73,12 @@ pub fn parse_buffer_quiet(contents: &[u8]) -> (ExifResult, Vec<String>) {
         FileType::Unknown => return (Err(ExifError::FileTypeUnknown), warnings),
         FileType::TIFF => parse_tiff(contents, &mut warnings),
         FileType::JPEG => {
-            find_embedded_tiff_in_jpeg(contents).and_then(|(offset, size)| {
+            match find_embedded_tiff_in_jpeg(contents).and_then(|(offset, size)| {
                 Ok(parse_tiff(&contents[offset..offset + size], &mut warnings))
-            }).unwrap()
+            }) {
+                Ok(r) => r,
+                Err(e) => return (Err(e), warnings)
+            }
         }
     };
 
