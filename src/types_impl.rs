@@ -90,31 +90,21 @@ impl IfdEntry {
 }
 
 impl Error for ExifError {
-    fn description(&self) -> &str {
-        match *self {
-            ExifError::IoError(ref e) => e.description(),
-            ExifError::FileTypeUnknown => "File type unknown",
-            ExifError::JpegWithoutExif(_) => "JPEG without EXIF section",
-            ExifError::TiffTruncated => "TIFF truncated at start",
-            ExifError::TiffBadPreamble(_) => "TIFF with bad preamble",
-            ExifError::IfdTruncated => "TIFF IFD truncated",
-            ExifError::ExifIfdTruncated(_) => "TIFF Exif IFD truncated",
-            ExifError::ExifIfdEntryNotFound => "TIFF Exif IFD not found",
-        }
-    }
 }
 
 impl Display for ExifError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             ExifError::IoError(ref e) => e.fmt(f),
-            ExifError::FileTypeUnknown => write!(f, "File type unknown"),
+            ExifError::FileTypeUnknown => f.write_str("File type unknown"),
             ExifError::JpegWithoutExif(ref s) => write!(f, "JPEG without EXIF section: {}", s),
-            ExifError::TiffTruncated => write!(f, "TIFF truncated at start"),
+            ExifError::TiffTruncated => f.write_str("TIFF truncated at start"),
             ExifError::TiffBadPreamble(ref s) => write!(f, "TIFF with bad preamble: {}", s),
-            ExifError::IfdTruncated => write!(f, "TIFF IFD truncated"),
+            ExifError::IfdTruncated => f.write_str("TIFF IFD truncated"),
             ExifError::ExifIfdTruncated(ref s) => write!(f, "TIFF Exif IFD truncated: {}", s),
-            ExifError::ExifIfdEntryNotFound => write!(f, "TIFF Exif IFD not found"),
+            ExifError::ExifIfdEntryNotFound => f.write_str("TIFF Exif IFD not found"),
+            ExifError::UnsupportedNamespace => f.write_str("Only standar namespace can be serialized"),
+            ExifError::MissingExifOffset => f.write_str("Expected to have seen ExifOffset tagin IFD0"),
         }
     }
 }
@@ -128,20 +118,20 @@ impl From<io::Error> for ExifError {
 impl fmt::Display for TagValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            TagValue::Ascii(ref s) => write!(f, "{}", s),
-            TagValue::U16(ref a) => write!(f, "{}", numarray_to_string(a)),
-            TagValue::I16(ref a) => write!(f, "{}", numarray_to_string(a)),
-            TagValue::U8(ref a) => write!(f, "{}", numarray_to_string(a)),
-            TagValue::I8(ref a) => write!(f, "{}", numarray_to_string(a)),
-            TagValue::U32(ref a) => write!(f, "{}", numarray_to_string(a)),
-            TagValue::I32(ref a) => write!(f, "{}", numarray_to_string(a)),
-            TagValue::F32(ref a) => write!(f, "{}", numarray_to_string(a)),
-            TagValue::F64(ref a) => write!(f, "{}", numarray_to_string(a)),
-            TagValue::URational(ref a) => write!(f, "{}", numarray_to_string(a)),
-            TagValue::IRational(ref a) => write!(f, "{}", numarray_to_string(a)),
-            TagValue::Undefined(ref a, _) => write!(f, "{}", numarray_to_string(a)),
-            TagValue::Unknown(ref _a, _) => write!(f, "<unknown blob>"),
-            TagValue::Invalid(ref _data, _le, _fmt, _cnt) => write!(f, "Invalid"),
+            TagValue::Ascii(ref s) => f.write_str(s),
+            TagValue::U16(ref a) => f.write_str(&numarray_to_string(a)),
+            TagValue::I16(ref a) => f.write_str(&numarray_to_string(a)),
+            TagValue::U8(ref a) => f.write_str(&numarray_to_string(a)),
+            TagValue::I8(ref a) => f.write_str(&numarray_to_string(a)),
+            TagValue::U32(ref a) => f.write_str(&numarray_to_string(a)),
+            TagValue::I32(ref a) => f.write_str(&numarray_to_string(a)),
+            TagValue::F32(ref a) => f.write_str(&numarray_to_string(a)),
+            TagValue::F64(ref a) => f.write_str(&numarray_to_string(a)),
+            TagValue::URational(ref a) => f.write_str(&numarray_to_string(a)),
+            TagValue::IRational(ref a) => f.write_str(&numarray_to_string(a)),
+            TagValue::Undefined(ref a, _) => f.write_str(&numarray_to_string(a)),
+            TagValue::Unknown(ref _a, _) => f.write_str("<unknown blob>"),
+            TagValue::Invalid(ref _data, _le, _fmt, _cnt) => f.write_str("Invalid"),
         }
     }
 }

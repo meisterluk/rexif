@@ -36,7 +36,7 @@ impl ExifData {
     ///
     /// *Note*: this serializes the metadata according to its original endianness (specified
     /// through the `le` attribute).
-    pub fn serialize(&self) -> Vec<u8> {
+    pub fn serialize(&self) -> Result<Vec<u8>, ExifError> {
         // Select the right TIFF header based on the endianness.
         let tiff_header = if self.le {
             INTEL_TIFF_HEADER
@@ -97,7 +97,7 @@ impl ExifData {
         // These offsets will be filled out (patched) later.
         let mut data_patches = vec![];
         for entry in ifd0 {
-            entry.ifd.serialize(&mut serialized, &mut data_patches);
+            entry.ifd.serialize(&mut serialized, &mut data_patches)?;
 
             // If IFD-0 points to an Exif/GPS sub-IFD, the offset of the sub-IFD must be serialized
             // inside IFD-0. Subtract `DATA_WIDTH` from the length, because the pointer to the
@@ -136,20 +136,20 @@ impl ExifData {
         }
 
         if !exif.is_empty() {
-            self.serialize_ifd(&mut serialized, exif, exif_ifd_pointer);
+            self.serialize_ifd(&mut serialized, exif, exif_ifd_pointer)?;
         }
 
         if !gps.is_empty() {
-            self.serialize_ifd(&mut serialized, gps, gps_ifd_pointer);
+            self.serialize_ifd(&mut serialized, gps, gps_ifd_pointer)?;
         }
 
         // TODO Makernote, Interoperability IFD, Thumbnail image
 
-        if self.mime == "image/jpeg" {
+        Ok(if self.mime == "image/jpeg" {
             [EXIF_HEADER, &serialized].concat()
         } else {
             serialized
-        }
+        })
     }
 
     /// Serialize GPS/Exif IFD entries.
@@ -158,7 +158,7 @@ impl ExifData {
         serialized: &mut Vec<u8>,
         entries: Vec<&ExifEntry>,
         pos: Option<usize>,
-    ) {
+    ) -> Result<(), ExifError> {
         let bytes = if self.le {
             (serialized.len() as u32).to_le_bytes()
         } else {
@@ -173,7 +173,7 @@ impl ExifData {
         }
 
         // Write the offset of this IFD in IFD-0.
-        let pos = pos.expect("Expected to have seen ExifOffset tagin IFD0");
+        let pos = pos.ok_or(ExifError::MissingExifOffset)?;
         for (place, byte) in serialized.iter_mut().skip(pos).zip(bytes.iter()) {
             *place = *byte;
         }
@@ -181,7 +181,7 @@ impl ExifData {
         let mut data_patches = vec![];
 
         for entry in entries {
-            entry.ifd.serialize(serialized, &mut data_patches);
+            entry.ifd.serialize(serialized, &mut data_patches)?;
         }
 
         serialized.extend(&[0, 0, 0, 0]);
@@ -197,6 +197,7 @@ impl ExifData {
                 *place = *byte;
             }
         }
+        Ok(())
     }
 }
 
@@ -227,6 +228,8 @@ pub enum ExifError {
     IfdTruncated,
     ExifIfdTruncated(String),
     ExifIfdEntryNotFound,
+    UnsupportedNamespace,
+    MissingExifOffset,
 }
 
 /// Structure that represents a parsed IFD entry of a TIFF image
@@ -280,9 +283,11 @@ impl IfdEntry {
         &self,
         serialized: &mut Vec<u8>,
         data_patches: &mut Vec<Patch>,
-    ) {
+    ) -> Result<(), ExifError> {
         // Serialize the entry
-        assert!(self.namespace == Namespace::Standard, "Found non-standard namespace");
+        if self.namespace != Namespace::Standard {
+            return Err(ExifError::UnsupportedNamespace)
+        }
 
         // Serialize the tag (2 bytes)
         if self.le {
@@ -313,6 +318,7 @@ impl IfdEntry {
             // 4 bytes that will be filled out later
             serialized.extend(&[0, 0, 0, 0]);
         }
+        Ok(())
     }
 }
 

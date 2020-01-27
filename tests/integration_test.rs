@@ -83,17 +83,17 @@ fn test_parse_jpeg_with_gps() -> Result<(), std::io::Error> {
 fn cmp_serialized_exif_with_original<P: AsRef<Path>>(file: P) -> Result<(), std::io::Error> {
     let parsed_exif1 = parse_file(&file).unwrap();
 
-    let serialized_exif1 = parsed_exif1.serialize();
+    let serialized_exif1 = parsed_exif1.serialize().unwrap();
     let serialized_exif1 = if &parsed_exif1.mime == "image/jpeg" {
         let size = (serialized_exif1.len() as u16 + 2).to_be_bytes();
         [APP_MARKER, &size, &serialized_exif1].concat()
     } else {
-        parsed_exif1.serialize()
+        parsed_exif1.serialize().unwrap()
     };
 
     let parsed_exif2 = parse_buffer(&serialized_exif1).unwrap();
 
-    let serialized_exif2 = parsed_exif2.serialize();
+    let serialized_exif2 = parsed_exif2.serialize().unwrap();
     let serialized_exif2 = if &parsed_exif2.mime == "image/jpeg" {
         let size = (serialized_exif2.len() as u16 + 2).to_be_bytes();
         [APP_MARKER, &size, &serialized_exif2].concat()
@@ -149,5 +149,5 @@ fn test_tiff_exif_serialization() -> Result<(), std::io::Error> {
 fn test_serialize_empty() {
     let exif = ExifData::new("image/jpeg", vec![], false);
     let tiff_header = [b'M', b'M', 0, 42, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0];
-    assert_eq!(exif.serialize(), [EXIF_HEADER, &tiff_header].concat());
+    assert_eq!(exif.serialize().unwrap(), [EXIF_HEADER, &tiff_header].concat());
 }
