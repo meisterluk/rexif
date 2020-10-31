@@ -31,7 +31,7 @@ pub fn sensitivity_type(e: &TagValue) -> String {
             n => return format!("Unknown ({})", n),
         }.to_owned()
     } else {
-        panic!(INV);
+        panic!("{}", INV);
     }
 }
 
@@ -48,7 +48,7 @@ pub fn orientation(e: &TagValue) -> String {
                 _ => return format!("Unknown ({})", n),
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -57,7 +57,7 @@ pub fn rational_value(e: &TagValue) -> String {
     match *e {
         TagValue::URational(ref v) => format!("{}", v[0].value()),
         TagValue::IRational(ref v) => format!("{}", v[0].value()),
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
@@ -67,7 +67,7 @@ pub fn rational_values(e: &TagValue) -> String {
             let ve: Vec<f64> = v.iter().map(|&x| x.value()).collect();
             numarray_to_string(&ve)
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
@@ -82,7 +82,7 @@ pub fn resolution_unit(e: &TagValue) -> String {
                 _ => return format!("Unknown ({})", n),
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -102,14 +102,14 @@ pub fn exposure_time(e: &TagValue) -> String {
                 format!("{:.1} s", r.value())
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
 pub fn f_number(e: &TagValue) -> String {
     match *e {
         TagValue::URational(ref v) => format!("f/{:.1}", v[0].value()),
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
@@ -129,7 +129,7 @@ pub fn exposure_program(e: &TagValue) -> String {
                 _ => return format!("Unknown ({})", n),
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -137,21 +137,21 @@ pub fn exposure_program(e: &TagValue) -> String {
 pub fn focal_length(e: &TagValue) -> String {
     match *e {
         TagValue::URational(ref v) => format!("{} mm", v[0].value()),
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
 pub fn focal_length_35(e: &TagValue) -> String {
     match *e {
         TagValue::U16(ref v) => format!("{} mm", v[0]),
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
 pub fn meters(e: &TagValue) -> String {
     match *e {
         TagValue::URational(ref v) => format!("{:.1} m", v[0].value()),
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
@@ -166,7 +166,7 @@ pub fn iso_speeds(e: &TagValue) -> String {
                 format!("Unknown ({})", numarray_to_string(&v))
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
@@ -188,7 +188,7 @@ pub fn dms(e: &TagValue) -> String {
                 )
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
@@ -202,7 +202,7 @@ pub fn gps_alt_ref(e: &TagValue) -> String {
                 _ => return format!("Unknown, assumed below sea level ({})", n),
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -220,7 +220,7 @@ pub fn gpsdestdistanceref(e: &TagValue) -> String {
                 return format!("Unknown ({})", v);
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -228,7 +228,7 @@ pub fn gpsdestdistanceref(e: &TagValue) -> String {
 pub fn gpsdestdistance(e: &TagValue) -> String {
     match *e {
         TagValue::URational(ref v) => format!("{:.3}", v[0].value()),
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
@@ -245,7 +245,7 @@ pub fn gpsspeedref(e: &TagValue) -> String {
                 return format!("Unknown ({})", v);
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -253,7 +253,7 @@ pub fn gpsspeedref(e: &TagValue) -> String {
 pub fn gpsspeed(e: &TagValue) -> String {
     match *e {
         TagValue::URational(ref v) => format!("{:.1}", v[0].value()),
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
@@ -268,7 +268,7 @@ pub fn gpsbearingref(e: &TagValue) -> String {
                 return format!("Unknown ({})", v);
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -276,7 +276,7 @@ pub fn gpsbearingref(e: &TagValue) -> String {
 pub fn gpsbearing(e: &TagValue) -> String {
     match *e {
         TagValue::URational(ref v) => format!("{:.2}°", v[0].value()),
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
@@ -293,7 +293,7 @@ pub fn gpstimestamp(e: &TagValue) -> String {
                 sec.value()
             )
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
@@ -307,7 +307,7 @@ pub fn gpsdiff(e: &TagValue) -> String {
                 _ => return format!("Unknown ({})", n),
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -323,7 +323,7 @@ pub fn gpsstatus(e: &TagValue) -> String {
                 return format!("Unknown ({})", v);
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -339,7 +339,7 @@ pub fn gpsmeasuremode(e: &TagValue) -> String {
                 return format!("Unknown ({})", v);
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -350,7 +350,7 @@ pub fn gpsmeasuremode(e: &TagValue) -> String {
 pub fn undefined_as_ascii(e: &TagValue) -> String {
     match *e {
         TagValue::Undefined(ref v, _) => String::from_utf8_lossy(&v[..]),
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -360,7 +360,7 @@ pub fn undefined_as_ascii(e: &TagValue) -> String {
 pub fn undefined_as_u8(e: &TagValue) -> String {
     match *e {
         TagValue::Undefined(ref v, _) => numarray_to_string(v),
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
@@ -396,7 +396,7 @@ pub fn undefined_as_encoded_string(e: &TagValue) -> String {
                 format!("String w/ undefined encoding {}", numarray_to_string(v))
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
@@ -404,21 +404,21 @@ pub fn undefined_as_encoded_string(e: &TagValue) -> String {
 pub fn undefined_as_blob(e: &TagValue) -> String {
     match *e {
         TagValue::Undefined(ref v, _) => format!("Blob of {} bytes", v.len()),
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
 pub fn apex_tv(e: &TagValue) -> String {
     match *e {
         TagValue::IRational(ref v) => format!("{:.1} Tv APEX", v[0].value()),
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
 pub fn apex_av(e: &TagValue) -> String {
     match *e {
         TagValue::URational(ref v) => format!("{:.1} Av APEX", v[0].value()),
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
@@ -432,14 +432,14 @@ pub fn apex_brightness(e: &TagValue) -> String {
                 format!("{:.1} APEX", v[0].value())
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
 pub fn apex_ev(e: &TagValue) -> String {
     match *e {
         TagValue::IRational(ref v) => format!("{:.2} EV APEX", v[0].value()),
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
@@ -452,7 +452,7 @@ pub fn file_source(e: &TagValue) -> String {
                 "Unknown"
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -460,7 +460,7 @@ pub fn file_source(e: &TagValue) -> String {
 pub fn flash_energy(e: &TagValue) -> String {
     match *e {
         TagValue::URational(ref v) => format!("{} BCPS", v[0].value()),
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
@@ -480,7 +480,7 @@ pub fn metering_mode(e: &TagValue) -> String {
                 _ => return format!("Unknown ({})", n),
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -514,7 +514,7 @@ pub fn light_source(e: &TagValue) -> String {
                 _ => return format!("Unknown ({})", n),
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -529,7 +529,7 @@ pub fn color_space(e: &TagValue) -> String {
                 _ => return format!("Unknown ({})", n),
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -576,7 +576,7 @@ pub fn flash(e: &TagValue) -> String {
 
             format!("{}{}{}{}", b0, b12, b34, b6)
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
@@ -591,14 +591,14 @@ pub fn subject_area(e: &TagValue) -> String {
             ),
             _ => format!("Unknown ({}) ", numarray_to_string(v)),
         },
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
 pub fn subject_location(e: &TagValue) -> String {
     match *e {
         TagValue::U16(ref v) => format!("at pixel {},{}", v[0], v[1]),
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }
 
@@ -613,7 +613,7 @@ pub fn sharpness(e: &TagValue) -> String {
                 _ => return format!("Unknown ({})", n),
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -629,7 +629,7 @@ pub fn saturation(e: &TagValue) -> String {
                 _ => return format!("Unknown ({})", n),
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -645,7 +645,7 @@ pub fn contrast(e: &TagValue) -> String {
                 _ => return format!("Unknown ({})", n),
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -663,7 +663,7 @@ pub fn gain_control(e: &TagValue) -> String {
                 _ => return format!("Unknown ({})", n),
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -679,7 +679,7 @@ pub fn exposure_mode(e: &TagValue) -> String {
                 _ => return format!("Unknown ({})", n),
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -696,7 +696,7 @@ pub fn scene_capture_type(e: &TagValue) -> String {
                 _ => return format!("Unknown ({})", n),
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -710,7 +710,7 @@ pub fn scene_type(e: &TagValue) -> String {
                 _ => return format!("Unknown ({})", n),
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -725,7 +725,7 @@ pub fn white_balance_mode(e: &TagValue) -> String {
                 _ => return format!("Unknown ({})", n),
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -745,7 +745,7 @@ pub fn sensing_method(e: &TagValue) -> String {
                 _ => return format!("Unknown ({})", n),
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -760,7 +760,7 @@ pub fn custom_rendered(e: &TagValue) -> String {
                 _ => return format!("Unknown ({})", n),
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -777,7 +777,7 @@ pub fn subject_distance_range(e: &TagValue) -> String {
                 _ => return format!("Unknown ({})", n),
             }
         }
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
     .to_string()
 }
@@ -803,6 +803,6 @@ pub fn lens_spec(e: &TagValue) -> String {
             }
         }
 
-        _ => panic!(INV),
+        _ => panic!("{}", INV),
     }
 }

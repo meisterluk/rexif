@@ -1,6 +1,6 @@
 [package]
 name = "rexif"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["Elvis Pfützenreuter <epxx@epxx.co>", "Kornel <kornel@geekhood.net>", "Gabriela Alexandra Moldovan <gabi@cloudflare.com>"]
 include = ["src/*.rs", "Cargo.toml", "README.md", "LICENSE"]
 description = "RExif is a native Rust crate, written to extract EXIF data from JPEG and TIFF images."
@@ -18,7 +18,7 @@ name = "rexif"
 path = "src/lib.rs"
 
 [dependencies]
-num = "0.3.0"
+num = "0.4.0"
 
 [dev-dependencies]
 glob = "0.3.0"
