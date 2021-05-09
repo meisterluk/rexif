@@ -14,11 +14,13 @@ pub fn parse_exif_entry(f: &IfdEntry, warnings: &mut Vec<String>, kind: IfdKind)
     let (tag, unit, format, min_count, max_count, more_readable) = tag_to_exif(f.tag);
 
     let value = tag_value_new(f);
+    let (tag, unit, format, min_count, max_count, more_readable) = tag_to_exif(f.tag);
+
     let e = ExifEntry {
         namespace: f.namespace,
         ifd: f.clone(),
         tag,
-        unit: unit.to_string(),
+        unit: unit.into(),
         value_more_readable: more_readable(&value),
         value,
         kind,

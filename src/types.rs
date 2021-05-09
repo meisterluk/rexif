@@ -612,7 +612,7 @@ pub struct ExifEntry {
     /// a GPS latitude is a triplet of rational values, so unit is D/M/S, even though
     /// `value_more_readable` contains a single string with all three parts
     /// combined.
-    pub unit: String,
+    pub unit: Cow<'static, str>,
     /// Human-readable and "pretty" version of `value`.
     /// Enumerations and tuples are interpreted and combined. If `value`
     /// has a unit, it is also added.
