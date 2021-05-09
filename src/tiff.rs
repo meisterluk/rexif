@@ -209,12 +209,10 @@ pub fn parse_ifds(
         };
     }
 
-    // I didn't want to make the copy, but how to pass a vector that is
-    // being iterated onto?
-    let exif_entries_copy = exif_entries.clone();
-
-    for entry in &mut exif_entries {
-        exif_postprocessing(entry, &exif_entries_copy);
+    for n in 0..exif_entries.len() {
+        let (begin, end) = exif_entries.split_at_mut(n);
+        let (entry, end) = end.split_first_mut().unwrap();
+        exif_postprocessing(entry, begin, end);
     }
 
     Ok(exif_entries)
