@@ -34,12 +34,15 @@ pub fn tag_value_new(f: &IfdEntry) -> Option<TagValue> {
     Some(match f.format {
         IfdFormat::Ascii => {
             // Remove \0, there may be more than one
-            let mut tot = f.data.len();
-            while tot > 0 && f.data[tot - 1] == 0 {
-                tot -= 1;
+            let mut data = &f.data[..];
+            while let Some((&val, rest)) = data.split_last() {
+                if val != 0 {
+                    break;
+                }
+                data = rest;
             }
             // In theory it should be pure ASCII but we admit UTF-8
-            let s = String::from_utf8_lossy(&f.data[0..tot]);
+            let s = String::from_utf8_lossy(data);
             let s = s.into_owned();
             TagValue::Ascii(s)
         }
