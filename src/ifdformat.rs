@@ -2,27 +2,31 @@ use super::lowlevel::*;
 use super::types::*;
 use std::fmt::Display;
 use num::Float;
+use std::fmt;
+use std::cell::RefCell;
 
-/// generic function that prints a string representation of a vector
-pub fn numarray_to_string<T: Display>(numbers: &[T]) -> String {
-    if numbers.is_empty() {
-        return "".to_string();
-    } else if numbers.len() == 1 {
-        return format!("{}", &numbers[0]);
+pub(crate) struct NumArray<I>(RefCell<Option<I>>);
+
+impl<I> NumArray<I> {
+    pub fn new(i: I) -> Self {
+        Self(RefCell::new(Some(i)))
     }
+}
 
-    let mut s = "".to_string();
-    let mut first = true;
-    for number in numbers {
-        if !first {
-            s += ", ";
+impl<T: Display, I: IntoIterator<Item=T>> Display for NumArray<I> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut first = true;
+        let iter = self.0.borrow_mut().take().unwrap();
+        for number in iter {
+            if !first {
+                write!(f, ", {}", number)?;
+                first = false;
+            } else {
+                write!(f, "{}", number)?;
+            }
         }
-        first = false;
-        let s2 = format!("{}", number);
-        s = s + &s2;
+        Ok(())
     }
-
-    s
 }
 
 /// Convert a IfdEntry into a tuple of TagValue
@@ -43,14 +47,14 @@ pub fn tag_value_new(f: &IfdEntry) -> TagValue {
             if f.data.len() < (f.count as usize * 2) {
                 return TagValue::Invalid(f.data.clone(), f.le, f.format as u16, f.count);
             }
-            let a = read_u16_array(f.le, f.count, &f.data[..]);
+            let a = read_u16_array(f.le, f.count, &f.data).unwrap();
             TagValue::U16(a)
         }
         IfdFormat::I16 => {
             if f.data.len() < (f.count as usize * 2) {
                 return TagValue::Invalid(f.data.clone(), f.le, f.format as u16, f.count);
             }
-            let a = read_i16_array(f.le, f.count, &f.data[..]);
+            let a = read_i16_array(f.le, f.count, &f.data).unwrap();
             TagValue::I16(a)
         }
         IfdFormat::U8 => {
@@ -64,49 +68,49 @@ pub fn tag_value_new(f: &IfdEntry) -> TagValue {
             if f.data.len() < (f.count as usize * 1) {
                 return TagValue::Invalid(f.data.clone(), f.le, f.format as u16, f.count);
             }
-            let a = read_i8_array(f.count, &f.data[..]);
+            let a = read_i8_array(f.count, &f.data).unwrap();
             TagValue::I8(a)
         }
         IfdFormat::U32 => {
             if f.data.len() < (f.count as usize * 4) {
                 return TagValue::Invalid(f.data.clone(), f.le, f.format as u16, f.count);
             }
-            let a = read_u32_array(f.le, f.count, &f.data[..]);
+            let a = read_u32_array(f.le, f.count, &f.data).unwrap();
             TagValue::U32(a)
         }
         IfdFormat::I32 => {
             if f.data.len() < (f.count as usize * 4) {
                 return TagValue::Invalid(f.data.clone(), f.le, f.format as u16, f.count);
             }
-            let a = read_i32_array(f.le, f.count, &f.data[..]);
+            let a = read_i32_array(f.le, f.count, &f.data).unwrap();
             TagValue::I32(a)
         }
         IfdFormat::F32 => {
             if f.data.len() < (f.count as usize * 4) {
                 return TagValue::Invalid(f.data.clone(), f.le, f.format as u16, f.count);
             }
-            let a = read_f32_array(f.count, &f.data[..]);
+            let a = read_f32_array(f.count, &f.data).unwrap();
             TagValue::F32(a)
         }
         IfdFormat::F64 => {
             if f.data.len() < (f.count as usize * 8) {
                 return TagValue::Invalid(f.data.clone(), f.le, f.format as u16, f.count);
             }
-            let a = read_f64_array(f.count, &f.data[..]);
+            let a = read_f64_array(f.count, &f.data).unwrap();
             TagValue::F64(a)
         }
         IfdFormat::URational => {
             if f.data.len() < (f.count as usize * 8) {
                 return TagValue::Invalid(f.data.clone(), f.le, f.format as u16, f.count);
             }
-            let a = read_urational_array(f.le, f.count, &f.data[..]);
+            let a = read_urational_array(f.le, f.count, &f.data).unwrap();
             TagValue::URational(a)
         }
         IfdFormat::IRational => {
             if f.data.len() < (f.count as usize * 8) {
                 return TagValue::Invalid(f.data.clone(), f.le, f.format as u16, f.count);
             }
-            let a = read_irational_array(f.le, f.count, &f.data[..]);
+            let a = read_irational_array(f.le, f.count, &f.data).unwrap();
             TagValue::IRational(a)
         }
 

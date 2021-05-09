@@ -1,4 +1,4 @@
-use super::ifdformat::numarray_to_string;
+use crate::ifdformat::NumArray;
 use super::lowlevel::*;
 use super::types::*;
 use std::error::Error;
@@ -31,7 +31,7 @@ impl IfdEntry {
     /// the IFD data area as an offset (i.e. when the tag is a Sub-IFD tag, or when
     /// there are more than 4 bytes of data and it would not fit within IFD).
     pub fn data_as_offset(&self) -> usize {
-        read_u32(self.le, &(self.ifd_data[0..4])) as usize
+        read_u32(self.le, &self.ifd_data).unwrap() as usize
     }
 
     /// Returns the size of an individual element (e.g. U8=1, U16=2...). Every
@@ -119,19 +119,19 @@ impl fmt::Display for TagValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             TagValue::Ascii(ref s) => f.write_str(s),
-            TagValue::U16(ref a) => f.write_str(&numarray_to_string(a)),
-            TagValue::I16(ref a) => f.write_str(&numarray_to_string(a)),
-            TagValue::U8(ref a) => f.write_str(&numarray_to_string(a)),
-            TagValue::I8(ref a) => f.write_str(&numarray_to_string(a)),
-            TagValue::U32(ref a) => f.write_str(&numarray_to_string(a)),
-            TagValue::I32(ref a) => f.write_str(&numarray_to_string(a)),
-            TagValue::F32(ref a) => f.write_str(&numarray_to_string(a)),
-            TagValue::F64(ref a) => f.write_str(&numarray_to_string(a)),
-            TagValue::URational(ref a) => f.write_str(&numarray_to_string(a)),
-            TagValue::IRational(ref a) => f.write_str(&numarray_to_string(a)),
-            TagValue::Undefined(ref a, _) => f.write_str(&numarray_to_string(a)),
-            TagValue::Unknown(ref _a, _) => f.write_str("<unknown blob>"),
-            TagValue::Invalid(ref _data, _le, _fmt, _cnt) => f.write_str("Invalid"),
+            TagValue::U16(ref a) => write!(f, "{}", NumArray::new(a)),
+            TagValue::I16(ref a) => write!(f, "{}", NumArray::new(a)),
+            TagValue::U8(ref a) => write!(f, "{}", NumArray::new(a)),
+            TagValue::I8(ref a) => write!(f, "{}", NumArray::new(a)),
+            TagValue::U32(ref a) => write!(f, "{}", NumArray::new(a)),
+            TagValue::I32(ref a) => write!(f, "{}", NumArray::new(a)),
+            TagValue::F32(ref a) => write!(f, "{}", NumArray::new(a)),
+            TagValue::F64(ref a) => write!(f, "{}", NumArray::new(a)),
+            TagValue::URational(ref a) => write!(f, "{}", NumArray::new(a)),
+            TagValue::IRational(ref a) => write!(f, "{}", NumArray::new(a)),
+            TagValue::Undefined(ref a, _) => write!(f, "{}", NumArray::new(a)),
+            TagValue::Unknown(..) => f.write_str("<unknown blob>"),
+            TagValue::Invalid(..) => f.write_str("Invalid"),
         }
     }
 }

@@ -60,8 +60,7 @@ pub fn rational_value(e: &TagValue) -> Option<Cow<'static, str>> {
 pub fn rational_values(e: &TagValue) -> Option<Cow<'static, str>> {
     match *e {
         TagValue::URational(ref v) => {
-            let ve: Vec<f64> = v.iter().map(|&x| x.value()).collect();
-            Some(numarray_to_string(&ve).into())
+            Some(NumArray::new(v.iter().map(|&x| x.value())).to_string().into())
         },
         _ => None,
     }
@@ -155,7 +154,7 @@ pub fn iso_speeds(e: &TagValue) -> Option<Cow<'static, str>> {
             } else if v.len() == 2 || v.len() == 3 {
                 format!("ISO {} latitude {}", v[0], v[1])
             } else {
-                format!("Unknown ({})", numarray_to_string(&v))
+                format!("Unknown ({})", NumArray::new(v))
             }.into())
         },
         _ => None,
@@ -341,7 +340,7 @@ pub fn undefined_as_ascii(e: &TagValue) -> Option<Cow<'static, str>> {
 /// that are opaque and small-sized
 pub fn undefined_as_u8(e: &TagValue) -> Option<Cow<'static, str>> {
     match *e {
-        TagValue::Undefined(ref v, _) => Some(numarray_to_string(v).into()),
+        TagValue::Undefined(ref v, _) => Some(NumArray::new(v).to_string().into()),
         _ => None,
     }
 }
@@ -360,22 +359,19 @@ pub fn undefined_as_encoded_string(e: &TagValue) -> Option<Cow<'static, str>> {
     match *e {
         TagValue::Undefined(ref v, le) => {
             Some(if v.len() < 8 {
-                format!("String w/ truncated preamble {}", numarray_to_string(v))
+                format!("String w/ truncated preamble {}", NumArray::new(v))
             } else if v[0..8] == ASC[..] {
-                let v8 = &v[8..];
-                let s = String::from_utf8_lossy(v8);
-                s.into_owned()
+                String::from_utf8_lossy(&v[8..]).into_owned()
             } else if v[0..8] == JIS[..] {
-                let v8: Vec<u8> = v[8..].into();
-                format!("JIS string {}", numarray_to_string(&v8))
+                format!("JIS string {}", NumArray::new(&v[8..]))
             } else if v[0..8] == UNICODE[..] {
                 let v8 = &v[8..];
                 // reinterpret as vector of u16
                 let v16_size = (v8.len() / 2) as u32;
-                let v16 = read_u16_array(le, v16_size, v8);
+                let v16 = read_u16_array(le, v16_size, v8)?;
                 String::from_utf16_lossy(&v16)
             } else {
-                format!("String w/ undefined encoding {}", numarray_to_string(v))
+                format!("String w/ undefined encoding {}", NumArray::new(v))
             }.into())
         },
         _ => None,
@@ -564,7 +560,7 @@ pub fn subject_area(e: &TagValue) -> Option<Cow<'static, str>> {
                 "at rectangle {},{} width {} height {}",
                 v[0], v[1], v[2], v[3]
             ),
-            _ => format!("Unknown ({}) ", numarray_to_string(v)),
+            _ => format!("Unknown ({}) ", NumArray::new(v)),
         }.into()),
         _ => None,
     }

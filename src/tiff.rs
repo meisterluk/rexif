@@ -70,14 +70,13 @@ pub fn parse_ifd(
 
     for i in 0..count {
         let mut offset = (i as usize) * 12;
-        let tag = read_u16(le, &contents.get(offset..offset + 2)?);
+        let tag = read_u16(le, &contents.get(offset..)?)?;
         offset += 2;
-        let format = read_u16(le, &contents.get(offset..offset + 2)?);
+        let format = read_u16(le, &contents.get(offset..)?)?;
         offset += 2;
-        let count = read_u32(le, &contents.get(offset..offset + 4)?);
+        let count = read_u32(le, &contents.get(offset..)?)?;
         offset += 4;
-        let data = &contents.get(offset..offset + 4)?;
-        let data = data.to_vec();
+        let data = contents.get(offset..offset + 4)?.to_vec();
 
         let entry = IfdEntry {
             namespace: Namespace::Standard,
@@ -95,7 +94,7 @@ pub fn parse_ifd(
     let next_ifd = if subifd {
         0
     } else {
-        read_u32(le, &contents[count as usize * 12..]) as usize
+        read_u32(le, &contents[count as usize * 12..])? as usize
     };
 
     Some((entries, next_ifd))
@@ -121,9 +120,9 @@ fn parse_exif_ifd(
     let count = read_u16(
         le,
         &contents
-            .get(offset..offset + 2)
+            .get(offset..)
             .ok_or(ExifError::IfdTruncated)?,
-    );
+    ).ok_or(ExifError::IfdTruncated)?;
     let ifd_length = (count as usize) * 12;
     offset += 2;
 
@@ -175,7 +174,7 @@ pub fn parse_ifds(
         &contents
             .get(offset..offset + 2)
             .ok_or(ExifError::IfdTruncated)?,
-    );
+    ).ok_or(ExifError::IfdTruncated)?;
     let ifd_length = (count as usize) * 12 + 4;
     offset += 2;
 
@@ -237,7 +236,7 @@ pub fn parse_tiff(contents: &[u8], warnings: &mut Vec<String>) -> (ExifEntryResu
         return (Err(ExifError::TiffBadPreamble(err)), false);
     }
 
-    let offset = read_u32(le, &contents[4..8]) as usize;
+    let offset = read_u32(le, &contents[4..]).unwrap() as usize;
 
     (parse_ifds(le, offset, &contents, warnings), le)
 }

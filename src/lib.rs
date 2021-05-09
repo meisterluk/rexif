@@ -1,3 +1,5 @@
+#![allow(clippy::upper_case_acronyms)]
+
 //! RExif is a native Rust create, written to extract EXIF data from JPEG and TIFF images.
 //!
 //! Note that it is in very early stages of development. Any sort of feedback is welcome!
