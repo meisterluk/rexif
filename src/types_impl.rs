@@ -56,6 +56,7 @@ impl IfdEntry {
     }
 
     /// Total length of the whole IFD entry (element count x element size)
+    #[inline]
     pub fn length(&self) -> usize {
         (self.size() as usize) * (self.count as usize)
     }
@@ -63,6 +64,7 @@ impl IfdEntry {
     /// Returns true if data is contained within the IFD structure, false when
     /// data can be found elsewhere in the image (and IFD structure contains the
     /// data offset, instead of data).
+    #[inline]
     pub fn in_ifd(&self) -> bool {
         self.length() <= 4
     }
@@ -93,6 +95,7 @@ impl Error for ExifError {
 }
 
 impl Display for ExifError {
+    #[cold]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             ExifError::IoError(ref e) => e.fmt(f),
@@ -110,12 +113,14 @@ impl Display for ExifError {
 }
 
 impl From<io::Error> for ExifError {
+    #[cold]
     fn from(err: io::Error) -> ExifError {
         ExifError::IoError(err)
     }
 }
 
 impl fmt::Display for TagValue {
+    #[cold]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             TagValue::Ascii(ref s) => f.write_str(s),
