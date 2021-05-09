@@ -12,30 +12,34 @@ pub fn exif_postprocessing(entry: &mut ExifEntry, entries: &[ExifEntry]) {
         ExifTag::XResolution | ExifTag::YResolution => {
             if let Some(f) = other_tag(ExifTag::ResolutionUnit, entries) {
                 entry.unit = f.value_more_readable.clone();
-                entry.value_more_readable.push_str(" pixels per ");
-                entry.value_more_readable.push_str(&f.value_more_readable);
+                let v = entry.value_more_readable.to_mut();
+                v.push_str(" pixels per ");
+                v.push_str(&f.value_more_readable);
             }
         }
 
         ExifTag::FocalPlaneXResolution | ExifTag::FocalPlaneYResolution => {
             if let Some(f) = other_tag(ExifTag::FocalPlaneResolutionUnit, entries) {
                 entry.unit = f.value_more_readable.clone();
-                entry.value_more_readable.push_str(" pixels per ");
-                entry.value_more_readable.push_str(&f.value_more_readable);
+                let v = entry.value_more_readable.to_mut();
+                v.push_str(" pixels per ");
+                v.push_str(&f.value_more_readable);
             }
         }
 
         ExifTag::GPSLatitude => {
             if let Some(f) = other_tag(ExifTag::GPSLatitudeRef, entries) {
-                entry.value_more_readable.push_str(" ");
-                entry.value_more_readable.push_str(&f.value_more_readable);
+                let v = entry.value_more_readable.to_mut();
+                v.push(' ');
+                v.push_str(&f.value_more_readable);
             }
         }
 
         ExifTag::GPSLongitude => {
             if let Some(f) = other_tag(ExifTag::GPSLongitudeRef, entries) {
-                entry.value_more_readable.push_str(" ");
-                entry.value_more_readable.push_str(&f.value_more_readable);
+                let v = entry.value_more_readable.to_mut();
+                v.push(' ');
+                v.push_str(&f.value_more_readable);
             }
         }
 
@@ -47,38 +51,42 @@ pub fn exif_postprocessing(entry: &mut ExifEntry, entries: &[ExifEntry]) {
                 };
 
                 if altref != 0 {
-                    entry.value_more_readable.push_str(" below sea level");
+                    entry.value_more_readable.to_mut().push_str(" below sea level");
                 }
             }
         }
 
         ExifTag::GPSDestLatitude => {
             if let Some(f) = other_tag(ExifTag::GPSDestLatitudeRef, entries) {
-                entry.value_more_readable.push_str(" ");
-                entry.value_more_readable.push_str(&f.value_more_readable);
+                let v = entry.value_more_readable.to_mut();
+                v.push(' ');
+                v.push_str(&f.value_more_readable);
             }
         }
 
         ExifTag::GPSDestLongitude => {
             if let Some(f) = other_tag(ExifTag::GPSDestLongitudeRef, entries) {
-                entry.value_more_readable.push_str(" ");
-                entry.value_more_readable.push_str(&f.value_more_readable);
+                let v = entry.value_more_readable.to_mut();
+                v.push(' ');
+                v.push_str(&f.value_more_readable);
             }
         }
 
         ExifTag::GPSDestDistance => {
             if let Some(f) = other_tag(ExifTag::GPSDestDistanceRef, entries) {
                 entry.unit = f.value_more_readable.clone();
-                entry.value_more_readable.push_str(" ");
-                entry.value_more_readable.push_str(&f.value_more_readable);
+                let v = entry.value_more_readable.to_mut();
+                v.push(' ');
+                v.push_str(&f.value_more_readable);
             }
         }
 
         ExifTag::GPSSpeed => {
             if let Some(f) = other_tag(ExifTag::GPSSpeedRef, entries) {
                 entry.unit = f.value_more_readable.clone();
-                entry.value_more_readable.push_str(" ");
-                entry.value_more_readable.push_str(&f.value_more_readable);
+                let v = entry.value_more_readable.to_mut();
+                v.push(' ');
+                v.push_str(&f.value_more_readable);
             }
         }
         _ => (),

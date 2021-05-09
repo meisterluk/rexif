@@ -12,16 +12,14 @@ type InExifResult = Result<(), ExifError>;
 /// but the raw information of tag is still available in the ifd member.
 pub fn parse_exif_entry(f: &IfdEntry, warnings: &mut Vec<String>, kind: IfdKind) -> ExifEntry {
     let (tag, unit, format, min_count, max_count, more_readable) = tag_to_exif(f.tag);
-
     let value = tag_value_new(f);
-    let (tag, unit, format, min_count, max_count, more_readable) = tag_to_exif(f.tag);
 
     let e = ExifEntry {
         namespace: f.namespace,
         ifd: f.clone(),
         tag,
         unit: unit.into(),
-        value_more_readable: more_readable(&value),
+        value_more_readable: more_readable(&value).unwrap(),
         value,
         kind,
     };

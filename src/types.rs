@@ -1,8 +1,8 @@
-use super::rational::*;
-use super::ifdformat::tag_value_eq;
+use std::borrow::Cow;
 use std::fmt;
 use std::io;
-use std::result::Result;
+use super::ifdformat::tag_value_eq;
+use super::rational::*;
 
 /// The value of the Exif header.
 pub const EXIF_HEADER: &[u8] = &[b'E', b'x', b'i', b'f', 0x00, 0x00];
@@ -618,7 +618,7 @@ pub struct ExifEntry {
     /// has a unit, it is also added.
     /// If tag is `UnknownToMe`,
     /// this member contains the same string as `value_readable`.
-    pub value_more_readable: String,
+    pub value_more_readable: Cow<'static, str>,
     pub kind: IfdKind,
 }
 
