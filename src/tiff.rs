@@ -10,16 +10,16 @@ type InExifResult = Result<(), ExifError>;
 /// Parse of raw IFD entry into EXIF data, if it is of a known type, and returns
 /// an ExifEntry object. If the tag is unknown, the enumeration is set to UnknownToMe,
 /// but the raw information of tag is still available in the ifd member.
-pub fn parse_exif_entry(f: &IfdEntry, warnings: &mut Vec<String>, kind: IfdKind) -> ExifEntry {
-    let (tag, unit, format, min_count, max_count, more_readable) = tag_to_exif(f.tag);
-    let value = match tag_value_new(f) {
+pub fn parse_exif_entry(ifd: IfdEntry, warnings: &mut Vec<String>, kind: IfdKind) -> ExifEntry {
+    let (tag, unit, format, min_count, max_count, more_readable) = tag_to_exif(ifd.tag);
+    let value = match tag_value_new(&ifd) {
         Some(v) => v,
-        None => TagValue::Invalid(f.data.clone(), f.le, f.format as u16, f.count),
+        None => TagValue::Invalid(ifd.data.clone(), ifd.le, ifd.format as u16, ifd.count),
     };
 
     let e = ExifEntry {
-        namespace: f.namespace,
-        ifd: f.clone(),
+        namespace: ifd.namespace,
+        ifd,
         tag,
         unit: unit.into(),
         value_more_readable: more_readable(&value).unwrap(),
@@ -36,27 +36,27 @@ pub fn parse_exif_entry(f: &IfdEntry, warnings: &mut Vec<String>, kind: IfdKind)
     // 1) tag must match enum
     // 2) all types except Ascii, Undefined, Unknown must have definite length
     // 3) Str type must not have a definite length
-    if (((tag as u32) & 0xffff) as u16) != f.tag
+    if (((tag as u32) & 0xffff) as u16) != e.ifd.tag
         || (min_count == -1
             && (format != IfdFormat::Ascii
                 && format != IfdFormat::Undefined
                 && format != IfdFormat::Unknown))
         || (min_count != -1 && format == IfdFormat::Ascii)
     {
-        panic!("Internal error {:x}", f.tag);
+        panic!("Internal error {:x}", e.ifd.tag);
     }
 
-    if format != f.format {
+    if format != e.ifd.format {
         warnings.push(format!(
             "EXIF tag {:x} {} ({}), expected format {} ({:?}), found {} ({:?})",
-            f.tag, f.tag, tag, format as u8, format, f.format as u8, f.format
+            e.ifd.tag, e.ifd.tag, tag, format as u8, format, e.ifd.format as u8, e.ifd.format
         ));
     }
 
-    if min_count != -1 && ((f.count as i32) < min_count || (f.count as i32) > max_count) {
+    if min_count != -1 && ((e.ifd.count as i32) < min_count || (e.ifd.count as i32) > max_count) {
         warnings.push(format!(
             "EXIF tag {:x} {} ({:?}), format {}, expected count {}..{} found {}",
-            f.tag, f.tag, tag, format as u8, min_count, max_count, f.count
+            e.ifd.tag, e.ifd.tag, tag, format as u8, min_count, max_count, e.ifd.count
         ));
     }
     e
@@ -138,9 +138,9 @@ fn parse_exif_ifd(
     let ifd_content = &contents
         .get(offset..offset + ifd_length)
         .ok_or(ExifError::IfdTruncated)?;
-    let (mut ifd, _) = parse_ifd(true, le, count, ifd_content).ok_or(ExifError::IfdTruncated)?;
+    let (ifd, _) = parse_ifd(true, le, count, ifd_content).ok_or(ExifError::IfdTruncated)?;
 
-    for entry in &mut ifd {
+    for mut entry in ifd {
         if !entry.copy_data(contents) {
             // data is probably beyond EOF
             continue;
