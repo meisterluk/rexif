@@ -10,10 +10,16 @@ pub enum FileType {
 
 impl Display for FileType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            FileType::Unknown => write!(f, "unknown"),
-            FileType::JPEG => write!(f, "image/jpeg"),
-            FileType::TIFF => write!(f, "image/tiff"),
+        f.write_str(self.as_str())
+    }
+}
+
+impl FileType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Unknown => "application/octet-stream",
+            Self::JPEG => "image/jpeg",
+            Self::TIFF => "image/tiff",
         }
     }
 }

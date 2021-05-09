@@ -84,7 +84,7 @@ fn cmp_serialized_exif_with_original<P: AsRef<Path>>(file: P) -> Result<(), std:
     let parsed_exif1 = parse_file(&file).unwrap();
 
     let serialized_exif1 = parsed_exif1.serialize().unwrap();
-    let serialized_exif1 = if &parsed_exif1.mime == "image/jpeg" {
+    let serialized_exif1 = if parsed_exif1.mime == "image/jpeg" {
         let size = (serialized_exif1.len() as u16 + 2).to_be_bytes();
         [APP_MARKER, &size, &serialized_exif1].concat()
     } else {
@@ -94,7 +94,7 @@ fn cmp_serialized_exif_with_original<P: AsRef<Path>>(file: P) -> Result<(), std:
     let parsed_exif2 = parse_buffer(&serialized_exif1).unwrap();
 
     let serialized_exif2 = parsed_exif2.serialize().unwrap();
-    let serialized_exif2 = if &parsed_exif2.mime == "image/jpeg" {
+    let serialized_exif2 = if parsed_exif2.mime == "image/jpeg" {
         let size = (serialized_exif2.len() as u16 + 2).to_be_bytes();
         [APP_MARKER, &size, &serialized_exif2].concat()
     } else {

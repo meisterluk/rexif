@@ -84,7 +84,7 @@ pub fn parse_buffer_quiet(contents: &[u8]) -> (ExifResult, Vec<String>) {
 
     (
         entries.map(|entries| ExifData {
-            mime: mime.to_string(),
+            mime: mime.as_str(),
             entries,
             le
         }),

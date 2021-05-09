@@ -14,7 +14,7 @@ const DATA_WIDTH: usize = 4;
 #[derive(Debug, PartialEq)]
 pub struct ExifData {
     /// MIME type of the parsed image. It may be "image/jpeg", "image/tiff", or empty if unrecognized.
-    pub mime: String,
+    pub mime: &'static str,
     /// Collection of EXIF entries found in the image
     pub entries: Vec<ExifEntry>,
     /// If `true`, this uses little-endian byte ordering for the raw bytes. Otherwise, it uses big-endian ordering.
@@ -22,9 +22,9 @@ pub struct ExifData {
 }
 
 impl ExifData {
-    pub fn new<S: Into<String>>(mime: S, entries: Vec<ExifEntry>, le: bool) -> Self {
+    pub fn new(mime: &'static str, entries: Vec<ExifEntry>, le: bool) -> Self {
         ExifData {
-            mime: mime.into(),
+            mime,
             entries,
             le,
         }
