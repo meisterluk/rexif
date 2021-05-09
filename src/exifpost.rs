@@ -2,12 +2,7 @@ use super::types::*;
 
 /// Find a tag of given type
 fn other_tag(tag: ExifTag, entries: &[ExifEntry]) -> Option<&ExifEntry> {
-    for entry in entries {
-        if entry.tag == tag {
-            return Some(entry);
-        }
-    }
-    None
+    entries.into_iter().find(|entry| entry.tag == tag)
 }
 
 /// Does postprocessing in tags that depend on other tags to have a complete interpretation
