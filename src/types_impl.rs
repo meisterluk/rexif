@@ -26,12 +26,18 @@ pub fn ifdformat_new(n: u16) -> IfdFormat {
 }
 
 impl IfdEntry {
+    #[deprecated]
+    pub fn data_as_offset(&self) -> usize {
+        self.try_data_as_offset().unwrap()
+    }
+
     /// Casts IFD entry data into an offset. Not very useful for the crate client.
     /// The call can't fail, but the caller must be sure that the IFD entry uses
     /// the IFD data area as an offset (i.e. when the tag is a Sub-IFD tag, or when
     /// there are more than 4 bytes of data and it would not fit within IFD).
-    pub fn data_as_offset(&self) -> usize {
-        read_u32(self.le, &self.ifd_data).unwrap() as usize
+    #[inline]
+    pub fn try_data_as_offset(&self) -> Option<usize> {
+        read_u32(self.le, &self.ifd_data).map(|l| l as usize)
     }
 
     /// Returns the size of an individual element (e.g. U8=1, U16=2...). Every
@@ -80,7 +86,10 @@ impl IfdEntry {
             return true;
         }
 
-        let offset = self.data_as_offset();
+        let offset = match self.try_data_as_offset() {
+            Some(o) => o,
+            _ => return false,
+        };
         if let Some(ext_data) = contents.get(offset..(offset + self.length())) {
             self.ext_data.clear();
             self.ext_data.extend(ext_data);

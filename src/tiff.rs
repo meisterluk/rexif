@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use super::exif::*;
 use super::exifpost::*;
 use super::ifdformat::*;
@@ -22,7 +23,7 @@ pub fn parse_exif_entry(ifd: IfdEntry, warnings: &mut Vec<String>, kind: IfdKind
         ifd,
         tag,
         unit: unit.into(),
-        value_more_readable: more_readable(&value).unwrap(),
+        value_more_readable: more_readable(&value).unwrap_or(Cow::Borrowed("")),
         value,
         kind,
     };
@@ -197,7 +198,7 @@ pub fn parse_ifds(
             continue;
         };
 
-        let exif_offset = entry.data_as_offset();
+        let exif_offset = entry.try_data_as_offset().unwrap_or(!0);
         if contents.len() < exif_offset {
             return Err(ExifError::ExifIfdTruncated(
                 "Exif SubIFD goes past EOF".to_string(),
