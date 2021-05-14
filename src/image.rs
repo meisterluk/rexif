@@ -2,6 +2,7 @@ use crate::types::ExifError;
 
 use std::fmt::{self, Display};
 
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub enum FileType {
     Unknown,
     JPEG,

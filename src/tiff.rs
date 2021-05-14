@@ -4,7 +4,6 @@ use super::exifpost::*;
 use super::ifdformat::*;
 use super::lowlevel::*;
 use super::types::*;
-use super::types_impl::*;
 
 type InExifResult = Result<(), ExifError>;
 
@@ -85,7 +84,7 @@ pub fn parse_ifd(
         let entry = IfdEntry {
             namespace: Namespace::Standard,
             tag,
-            format: ifdformat_new(format),
+            format: IfdFormat::new(format),
             count,
             ifd_data: data,
             le,

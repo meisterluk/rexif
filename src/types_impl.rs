@@ -6,22 +6,30 @@ use std::fmt;
 use std::fmt::Display;
 use std::io;
 
-/// Convert an IFD format code to the IfdFormat enumeration
+#[deprecated(note = "Use IfdFormat::new(n)")]
+#[doc(hidden)]
 pub fn ifdformat_new(n: u16) -> IfdFormat {
-    match n {
-        1 => IfdFormat::U8,
-        2 => IfdFormat::Ascii,
-        3 => IfdFormat::U16,
-        4 => IfdFormat::U32,
-        5 => IfdFormat::URational,
-        6 => IfdFormat::I8,
-        7 => IfdFormat::Undefined,
-        8 => IfdFormat::I16,
-        9 => IfdFormat::I32,
-        10 => IfdFormat::IRational,
-        11 => IfdFormat::F32,
-        12 => IfdFormat::F64,
-        _ => IfdFormat::Unknown,
+    IfdFormat::new(n)
+}
+
+impl IfdFormat {
+    /// Convert an IFD format code to the IfdFormat enumeration
+    pub fn new(code: u16) -> Self {
+        match code {
+            1 => IfdFormat::U8,
+            2 => IfdFormat::Ascii,
+            3 => IfdFormat::U16,
+            4 => IfdFormat::U32,
+            5 => IfdFormat::URational,
+            6 => IfdFormat::I8,
+            7 => IfdFormat::Undefined,
+            8 => IfdFormat::I16,
+            9 => IfdFormat::I32,
+            10 => IfdFormat::IRational,
+            11 => IfdFormat::F32,
+            12 => IfdFormat::F64,
+            _ => IfdFormat::Unknown,
+        }
     }
 }
 
