@@ -129,7 +129,7 @@ impl ExifData {
                 (serialized.len() as u32).to_be_bytes()
             };
 
-            serialized.extend(&patch.data);
+            serialized.extend(patch.data);
             for (place, byte) in serialized.iter_mut().skip(patch.offset_pos as usize).zip(bytes.iter()) {
                 *place = *byte;
             }
@@ -192,7 +192,7 @@ impl ExifData {
             } else {
                 (serialized.len() as u32).to_be_bytes()
             };
-            serialized.extend(&patch.data);
+            serialized.extend(patch.data);
             for (place, byte) in serialized.iter_mut().skip(patch.offset_pos as usize).zip(bytes.iter()) {
                 *place = *byte;
             }
@@ -201,18 +201,18 @@ impl ExifData {
     }
 }
 
-pub(super) struct Patch {
+pub(super) struct Patch<'a> {
     /// The position where to write the offset in the file where the data will be located.
     offset_pos: u32,
     /// The data to add to the data section of the current IFD.
-    data: Vec<u8>,
+    data: &'a [u8],
 }
 
-impl Patch {
+impl Patch<'_> {
     pub fn new(offset_pos: u32, data: &[u8]) -> Patch {
         Patch {
             offset_pos,
-            data: data.to_vec(),
+            data,
         }
     }
 }
@@ -279,10 +279,10 @@ impl PartialEq for IfdEntry {
 }
 
 impl IfdEntry {
-    pub(crate) fn serialize(
-        &self,
+    pub(crate) fn serialize<'a>(
+        &'a self,
         serialized: &mut Vec<u8>,
-        data_patches: &mut Vec<Patch>,
+        data_patches: &mut Vec<Patch<'a>>,
     ) -> Result<(), ExifError> {
         // Serialize the entry
         if self.namespace != Namespace::Standard {
