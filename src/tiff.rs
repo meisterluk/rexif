@@ -117,7 +117,7 @@ fn parse_exif_ifd(
 
     if contents.len() < (offset + 2) {
         return Err(ExifError::ExifIfdTruncated(
-            "Truncated at dir entry count".to_string(),
+            format!("Truncated {:?} at dir entry count ({} < {})", kind, contents.len(), (offset + 2)),
         ));
     }
 
@@ -204,10 +204,7 @@ pub fn parse_ifds(
                 "Exif SubIFD goes past EOF".to_string(),
             ));
         }
-        match parse_exif_ifd(le, contents, exif_offset, &mut exif_entries, warnings, ifd_kind) {
-            Ok(_) => true,
-            Err(e) => return Err(e),
-        };
+        parse_exif_ifd(le, contents, exif_offset, &mut exif_entries, warnings, ifd_kind)?;
     }
 
     for n in 0..exif_entries.len() {
