@@ -21,3 +21,9 @@ members = ["."]
 [[bin]]
 name = "serialize_fuzz"
 path = "fuzz_targets/serialize_fuzz.rs"
+
+[[bin]]
+name = "parse"
+path = "fuzz_targets/parse.rs"
+test = false
+doc = false
