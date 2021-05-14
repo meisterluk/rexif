@@ -30,7 +30,7 @@ impl<T: Display, I: IntoIterator<Item=T>> Display for NumArray<I> {
 }
 
 /// Convert a IfdEntry into a tuple of TagValue
-pub fn tag_value_new(f: &IfdEntry) -> Option<TagValue> {
+pub(crate) fn tag_value_new(f: &IfdEntry) -> Option<TagValue> {
     Some(match f.format {
         IfdFormat::Ascii => {
             // Remove \0, there may be more than one
@@ -108,7 +108,7 @@ fn vec_cmp<F: Float>(va: &[F], vb: &[F]) -> bool {
 /// Check if `left` == `right`. If the `left` and `right` are float vectors, this returns `true` even
 /// if they contain NaN values (as long as the two vectors are otherwise identical, and contain NaN
 /// values at the same positions).
-pub fn tag_value_eq(left: &TagValue, right: &TagValue) -> bool {
+pub(crate) fn tag_value_eq(left: &TagValue, right: &TagValue) -> bool {
     match (left, right) {
         (TagValue::F32(x), TagValue::F32(y)) => vec_cmp(&x, &y),
         (TagValue::F64(x), TagValue::F64(y)) => vec_cmp(&x, &y),

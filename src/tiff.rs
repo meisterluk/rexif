@@ -11,7 +11,7 @@ type InExifResult = Result<(), ExifError>;
 /// Parse of raw IFD entry into EXIF data, if it is of a known type, and returns
 /// an ExifEntry object. If the tag is unknown, the enumeration is set to UnknownToMe,
 /// but the raw information of tag is still available in the ifd member.
-pub fn parse_exif_entry(ifd: IfdEntry, warnings: &mut Vec<String>, kind: IfdKind) -> ExifEntry {
+pub(crate) fn parse_exif_entry(ifd: IfdEntry, warnings: &mut Vec<String>, kind: IfdKind) -> ExifEntry {
     let (tag, unit, format, min_count, max_count, more_readable) = tag_to_exif(ifd.tag);
     let value = match tag_value_new(&ifd) {
         Some(v) => v,

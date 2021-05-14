@@ -25,7 +25,7 @@ impl FileType {
 }
 
 /// Detect the type of an image contained in a byte buffer
-pub fn detect_type(contents: &[u8]) -> FileType {
+pub(crate) fn detect_type(contents: &[u8]) -> FileType {
     if contents.len() < 11 {
         return FileType::Unknown;
     }
