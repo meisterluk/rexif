@@ -493,7 +493,7 @@ impl fmt::Display for ExifTag {
                 ExifTag::ExposureBiasValue => "Exposure bias value",
                 ExifTag::MaxApertureValue => "Maximum aperture value",
                 ExifTag::SubjectDistance => "Subject distance",
-                ExifTag::MeteringMode => "Meteting mode",
+                ExifTag::MeteringMode => "Metering mode",
                 ExifTag::LightSource => "Light source",
                 ExifTag::Flash => "Flash",
                 ExifTag::FocalLength => "Focal length",
